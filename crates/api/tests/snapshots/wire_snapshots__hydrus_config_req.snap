@@ -1,0 +1,11 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "HydrusConfigReq { dir: \"/hydrus/db\".into(), tag_services: vec![1, 2] }"
+---
+{
+  "dir": "/hydrus/db",
+  "tag_services": [
+    1,
+    2
+  ]
+}

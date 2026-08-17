@@ -1,0 +1,8 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "HydrusConfigDto { dir: Some(\"/hydrus/db\".into()), tag_services: vec![] }"
+---
+{
+  "dir": "/hydrus/db",
+  "tag_services": []
+}

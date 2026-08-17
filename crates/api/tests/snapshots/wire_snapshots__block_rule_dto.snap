@@ -1,0 +1,11 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "BlockRuleDto\n{\n    id: 3, kind: \"tag_pattern\".into(), target: \"meme:*\".into(), note:\n    Some(\"noise\".into()), created_at: 1234,\n}"
+---
+{
+  "id": 3,
+  "kind": "tag_pattern",
+  "target": "meme:*",
+  "note": "noise",
+  "created_at": 1234
+}

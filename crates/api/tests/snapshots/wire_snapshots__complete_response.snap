@@ -1,0 +1,19 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "CompleteResponse\n{\n    namespaces:\n    vec![NamespaceSuggestionDto\n    { namespace: \"character\".into(), tag_count: 40 }], tags:\n    vec![TagSuggestionDto\n    { namespace: \"character\".into(), subtag: \"samus\".into(), count: 12 }],\n}"
+---
+{
+  "namespaces": [
+    {
+      "namespace": "character",
+      "tag_count": 40
+    }
+  ],
+  "tags": [
+    {
+      "namespace": "character",
+      "subtag": "samus",
+      "count": 12
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+-- Migration 0031 — defensive tag re-canonicalizer (issue #77)
+--
+-- This migration carries no DDL; all schema is already correct after 0030.
+-- The Rust hook (recanonicalize_tags) does the work:
+--
+--   For each row in `tags`, it computes the canonical (namespace, subtag) pair
+--   by round-tripping through Tag::parse(tag.to_string()). If the stored pair
+--   already matches the canonical pair (the common case for any tag written by a
+--   correct build), the row is left untouched. Only rows that diverge from the
+--   canonical form — which could arrive via federation from a corrupt or old
+--   implementation — are updated or merged.
+--
+-- No-op proof on real data:
+--   Every (namespace, subtag) pair produced by Tag::parse is already a fixed
+--   point of parse∘Display. The migration is therefore a no-op on any database
+--   whose rows were all written by a correct Tag::parse call. It only rewrites
+--   rows injected via raw SQL or received from a peer running a buggy parser
+--   that, for example, stored ("", ")") as namespace="" subtag=")" — that pair
+--   IS already canonical (parse(")") → ("",")")), so even that is a no-op.
+--   The only non-trivial case is a row like namespace="" subtag=":)" that a
+--   buggy old build might have written as ("",":)") but whose canonical Display
+--   form is "::)" → parse → ("",":)") — still a fixed point. In short, every
+--   row a correct build can write is already canonical; the hook only merges
+--   rows imported from corrupt external sources.
+--
+-- After any merge the hook rebuilds tag_completion_counts and
+-- tag_namespace_counts deterministically, bypassing triggers.

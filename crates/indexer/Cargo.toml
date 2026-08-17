@@ -1,0 +1,36 @@
+[package]
+name = "naiad-indexer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+bench = false
+
+[dependencies]
+naiad-core.workspace = true
+walkdir.workspace = true
+thiserror.workspace = true
+imagesize.workspace = true
+notify.workspace = true
+notify-debouncer-full.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+naiad-test-support.workspace = true
+criterion.workspace = true
+rayon.workspace = true
+tempfile = "3"
+
+[[bench]]
+name = "hash"
+harness = false
+
+[[bench]]
+name = "scan"
+harness = false
+
+[lints]
+workspace = true

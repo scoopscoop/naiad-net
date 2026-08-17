@@ -1,0 +1,14 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "ScanSummary\n{\n    imported: 3, marked_missing: 1, errors:\n    vec![ScanError { path: \"/x\".into(), message: \"boom\".into() }],\n}"
+---
+{
+  "imported": 3,
+  "marked_missing": 1,
+  "errors": [
+    {
+      "path": "/x",
+      "message": "boom"
+    }
+  ]
+}

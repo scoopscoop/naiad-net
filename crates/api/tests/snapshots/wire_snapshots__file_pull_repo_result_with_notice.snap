@@ -1,0 +1,10 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "FilePullRepoResult { repo: \"ptr\".into(), mappings_added: 7, missing_sha256: 0, error: None, notice: Some(\"repo ptr: privacy ceiling below floor; querying at 16 bits\".into()), }"
+---
+{
+  "repo": "ptr",
+  "mappings_added": 7,
+  "missing_sha256": 0,
+  "notice": "repo ptr: privacy ceiling below floor; querying at 16 bits"
+}

@@ -1,0 +1,6 @@
+CREATE TABLE tools (
+    id   INTEGER PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE
+);
+ALTER TABLE mappings ADD COLUMN tool_id INTEGER REFERENCES tools(id);
+ALTER TABLE staged_mappings ADD COLUMN tool_id INTEGER REFERENCES tools(id);

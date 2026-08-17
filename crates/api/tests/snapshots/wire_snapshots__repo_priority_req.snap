@@ -1,0 +1,8 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "RepoPriorityReq { name: \"ptr\".into(), priority: 2 }"
+---
+{
+  "name": "ptr",
+  "priority": 2
+}

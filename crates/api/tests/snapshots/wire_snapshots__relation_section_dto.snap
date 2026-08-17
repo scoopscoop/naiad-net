@@ -1,0 +1,13 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "RelationSectionDto\n{\n    items: vec![RelationTagDto { tag: \"samus_aran\".into(), count: 7 }], total:\n    3\n}"
+---
+{
+  "items": [
+    {
+      "tag": "samus_aran",
+      "count": 7
+    }
+  ],
+  "total": 3
+}

@@ -1,0 +1,16 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "PullSummary\n{\n    results:\n    vec![PullRepoOutcome\n    {\n        repo: \"ptr\".into(), matched_files: 3, mappings: 7, missing_sha256: 2,\n        error: None,\n    }], matched_files: 3, mappings: 7,\n}"
+---
+{
+  "results": [
+    {
+      "repo": "ptr",
+      "matched_files": 3,
+      "mappings": 7,
+      "missing_sha256": 2
+    }
+  ],
+  "matched_files": 3,
+  "mappings": 7
+}

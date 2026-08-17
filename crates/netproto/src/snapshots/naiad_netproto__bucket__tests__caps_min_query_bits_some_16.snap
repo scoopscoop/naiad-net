@@ -1,0 +1,24 @@
+---
+source: crates/netproto/src/bucket.rs
+assertion_line: 1563
+expression: caps
+---
+{
+  "version": 8,
+  "mode": "bucketed",
+  "prefix_bits": 256,
+  "relation_incremental": true,
+  "mapping_incremental": false,
+  "reports": false,
+  "hash_domain": "blake3",
+  "hash_domains": [
+    "blake3",
+    "sha256"
+  ],
+  "incremental_domains": [
+    "blake3"
+  ],
+  "server_version": "0.2.73",
+  "streaming": true,
+  "min_query_bits": 16
+}

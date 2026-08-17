@@ -1,0 +1,8 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "RelationPullSummary { siblings: 3, parents: 2 }"
+---
+{
+  "siblings": 3,
+  "parents": 2
+}

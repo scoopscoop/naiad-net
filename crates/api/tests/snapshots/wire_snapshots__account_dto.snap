@@ -1,0 +1,8 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "AccountDto\n{ public_key: Some(\"ab\".repeat(32)), key_path: \"/lib/naiad.key\".into() }"
+---
+{
+  "public_key": "abababababababababababababababababababababababababababababababab",
+  "key_path": "/lib/naiad.key"
+}

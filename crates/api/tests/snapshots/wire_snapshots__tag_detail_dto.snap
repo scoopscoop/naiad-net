@@ -1,0 +1,12 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "TagDetailDto\n{\n    tag: \"character:samus\".into(), presence: \"pulled\".into(), services:\n    vec![\"ptr\".into()], relations: true,\n}"
+---
+{
+  "tag": "character:samus",
+  "presence": "pulled",
+  "services": [
+    "ptr"
+  ],
+  "relations": true
+}

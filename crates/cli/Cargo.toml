@@ -1,0 +1,34 @@
+[package]
+name = "naiad-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "naiad"
+path = "src/main.rs"
+bench = false
+
+[dependencies]
+naiad-bootstrap.workspace = true
+naiad-api.workspace = true
+naiad-daemon.workspace = true
+naiad-core.workspace = true
+naiad-db.workspace = true
+clap.workspace = true
+anyhow.workspace = true
+ureq.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[dev-dependencies]
+naiad-test-support.workspace = true
+naiad-api.workspace = true
+ureq.workspace = true
+
+[lints]
+workspace = true

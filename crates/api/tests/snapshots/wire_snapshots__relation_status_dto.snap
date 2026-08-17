@@ -1,0 +1,10 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "RelationStatusDto\n{ service: \"local\".into(), siblings: 3, parents: 1, last_pull: Some(1234) }"
+---
+{
+  "service": "local",
+  "siblings": 3,
+  "parents": 1,
+  "last_pull": 1234
+}

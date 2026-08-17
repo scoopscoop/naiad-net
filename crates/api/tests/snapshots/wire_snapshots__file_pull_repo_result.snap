@@ -1,0 +1,9 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "FilePullRepoResult\n{ repo: \"ptr\".into(), mappings_added: 7, missing_sha256: 2, error: None, notice: None, }"
+---
+{
+  "repo": "ptr",
+  "mappings_added": 7,
+  "missing_sha256": 2
+}

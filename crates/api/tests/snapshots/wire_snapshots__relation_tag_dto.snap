@@ -1,0 +1,8 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "RelationTagDto { tag: \"samus_aran\".into(), count: 7 }"
+---
+{
+  "tag": "samus_aran",
+  "count": 7
+}

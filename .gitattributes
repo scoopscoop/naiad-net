@@ -1,0 +1,11 @@
+# Normalize all text files to LF in the repository. Guards against editors and
+# tools on Windows silently committing CRLF rewrites (which pollute blame and
+# make whole-file phantom diffs).
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.db binary

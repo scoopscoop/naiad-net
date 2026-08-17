@@ -1,0 +1,101 @@
+# Release: build portable Windows app + Linux server tarball on tag push, attach to a GitHub Release.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install frontend dependencies
+        run: npm --prefix ui ci
+
+      - name: Build portable Windows zip
+        run: powershell -ExecutionPolicy Bypass -File scripts/package-windows.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: dist/*.zip
+
+  linux-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - name: Install musl linker
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build Linux server tarball
+        run: bash scripts/package-server.sh x86_64-unknown-linux-musl
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-tarball
+          path: dist/*.tar.gz
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [windows, linux-server]
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-zip
+          path: dist/
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-tarball
+          path: dist/
+
+      - name: Generate SHA256SUMS.txt
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.zip
+            dist/*.tar.gz
+            dist/SHA256SUMS.txt
+          body: |
+            **Windows portable desktop app:** download the `.zip`, unzip it anywhere, and
+            double-click `naiad-desktop.exe` to launch. WebView2 is required (standard on
+            Windows 10 and 11 — no separate installation needed).
+
+            **Linux server tarball:** download the `.tar.gz`, extract it, and run
+            `naiad-repo` from the resulting folder. See the bundled `README.md` and
+            `repo.toml` for configuration.
+
+            Verify your download against `SHA256SUMS.txt`:
+            ```
+            sha256sum --check SHA256SUMS.txt
+            ```

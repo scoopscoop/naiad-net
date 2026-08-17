@@ -1,0 +1,11 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "SourceImportSummary\n{\n    mappings_staged: 3, mappings_resolved: 2, siblings: 1, parents: 0,\n    sha256_backfilled: 5,\n}"
+---
+{
+  "mappings_staged": 3,
+  "mappings_resolved": 2,
+  "siblings": 1,
+  "parents": 0,
+  "sha256_backfilled": 5
+}

@@ -1,0 +1,8 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "RepoPullSummary { matched_files: 3, mappings: 7, notice: None, }"
+---
+{
+  "matched_files": 3,
+  "mappings": 7
+}

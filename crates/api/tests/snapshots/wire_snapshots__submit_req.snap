@@ -1,0 +1,10 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "SubmitReq\n{\n    name: \"ptr\".into(), file: \"a\".repeat(64), tag: \"character:samus\".into(),\n    op: \"add\".into(),\n}"
+---
+{
+  "name": "ptr",
+  "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "tag": "character:samus",
+  "op": "add"
+}

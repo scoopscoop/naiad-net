@@ -1,0 +1,111 @@
+# naiad-repo settings -- read once when `naiad-repo serve` starts.
+# CLI flags and NAIAD_REPO_* environment variables override these values.
+# Edit and restart to apply. This file lives beside the repository database (repo.db).
+
+[serve]
+# Address to bind. Use 0.0.0.0:9090 to accept connections from other machines.
+# Env: NAIAD_REPO_ADDR
+# addr = "127.0.0.1:9090"
+# Crowd-size floor for k-anonymity prefix sizing (ADR 0001).
+# Env: NAIAD_REPO_K
+# k = 1000
+# Optional: 64-char hex Ed25519 pubkey advertised in /repo/caps as the repo's public identity.
+# (Not the operator signing key -- that stays in repo.key beside the database.)
+# Env: NAIAD_REPO_KEY
+# repo_key = ""
+# Optional: human-readable repo display name advertised in /repo/caps.
+# Clients use it as the repo's local name when subscribing.
+# Env: NAIAD_REPO_NAME
+# name = ""
+# Hash domain this repo natively serves, advertised in /repo/caps.
+# Default: blake3 (native naiad identity). [bridge].enabled = true ADDS a
+# sha256 domain alongside this one -- it never replaces it.
+# Env: NAIAD_REPO_HASH_DOMAIN
+# hash_domain = "blake3"
+# Fail-closed no-egress assertion: when true, refuse to start the PTR
+# follow-loop (fatal if [bridge].enabled = true is also set) and emit a
+# startup line confirming no outbound PTR sync. Use on a static mirror
+# container where the follow-loop must never open. Default: false.
+# Env: NAIAD_REPO_NO_EGRESS  CLI: --no-egress
+# no_egress = false
+# Number of read-only SQLite connections in the round-robin pool (#202).
+# Parallel caps/buckets/snapshot reads each borrow a distinct connection so
+# they run concurrently under SQLite WAL instead of serialising. Clamp [1, 64].
+# Env: NAIAD_REPO_READ_CONNECTIONS
+# read_connections = 4
+# Serve-only mode: when true, write endpoints (POST /repo/submit, /repo/report,
+# POST /repo/moderate, POST /repo/relations/submit) return 403 Forbidden, and
+# pooled read connections receive PRAGMA query_only = ON plus a 1 GiB mmap
+# window for read throughput. The writer store is still opened (WAL checkpoint
+# on clean shutdown requires it). A separate bridge sync process writing the
+# same live store is safe: WAL readers see committed changes on the next
+# transaction. Does NOT set SQLite immutable=1 (unsafe under nightly sync,
+# design §10.1). Default: false.
+# Env: NAIAD_REPO_READ_ONLY
+# read_only = false
+
+# [bridge]
+# Serve an ADDITIONAL sha256 hash domain from Hydrus data (ADR 0024).
+# Env mirrors: NAIAD_REPO_BRIDGE_*.
+# enabled = false
+# Which sha256 backend: "mirror" (eager store fed by `bridge seed`/`sync`)
+# or "snapshot" (query a static Hydrus client.db set directly; no seed,
+# no store, freshness = snapshot age).
+# mode = "mirror"
+# Snapshot mode only: directory holding client.db, client.master.db and
+# client.mappings.db. Missing or unreadable is a fatal startup error.
+# snapshot_dir = "/srv/ptr-snapshot"
+# Snapshot mode only: Hydrus tag-service id inside the snapshot.
+# Omit to auto-discover.
+# snapshot_service_id = 9
+# Precision ceiling for sha256-domain queries, in prefix bits. Lower it to
+# enforce k-anonymity coarseness on a shared deployment. The effective ceiling
+# 256 is enforced by the server's domain policy regardless of what is set here.
+# Values below 8 are raised to 8 at startup (with a warning).
+# max_query_bits = 256
+# Minimum prefix bits required for sha256-domain bucket queries (default 8).
+# Raise this on large snapshots (e.g. the PTR, ~200M hashes) where a coarse
+# query would trigger a doomed multi-GB scan before hitting the response budget
+# or timeout. With min_query_bits = 16, requests below 16 bits return a fast 400
+# instead. At 16 bits on the PTR the k-anonymity crowd is still ~3000 files per
+# bucket, so privacy is not harmed. Small repos should keep the default of 8.
+# Bench: 8 bits on the PTR never completed (killed at ~2 h); 16 bits succeeds
+# at ~6 MB per 4-bucket request on spinning disk.
+# Env: NAIAD_REPO_BRIDGE_MIN_QUERY_BITS
+# min_query_bits = 8
+# Mirror mode only: PTR connection and sync state.
+# ptr_url = "https://ptr.hydrus.network:45871"
+# ptr_key = "<64-char hex access key; default is the public PTR read key>"
+# state_db = "bridge-state.db"
+
+# [stats]
+# Built-in statistics subsystem: records request/system/store/sync metrics into
+# a separate stats.db and serves a self-contained dashboard on a loopback-only
+# second port (reach it with: ssh -L 9092:localhost:9092 <host>).
+# Env mirrors: NAIAD_REPO_STATS_*.
+# enabled = true
+# Bind address for the stats listener. MUST be a loopback address (127.0.0.0/8
+# or ::1) unless allow_non_loopback = true. A non-loopback bind without that
+# flag is a FATAL startup error -- the stats port is never meant to be public.
+# Env: NAIAD_REPO_STATS_LISTEN
+# listen = "127.0.0.1:9092"
+# Escape hatch: permit a non-loopback listen address. Leave false unless you
+# deliberately front the stats port behind your own access control.
+# Env: NAIAD_REPO_STATS_ALLOW_NON_LOOPBACK
+# allow_non_loopback = false
+# stats.db path. A relative path resolves beside the repository database.
+# Delete the file to reset all history (rollback is trivial).
+# Env: NAIAD_REPO_STATS_DB
+# db_path = "stats.db"
+
+[log]
+# Log filter: trace | debug | info | warn | error. RUST_LOG beats NAIAD_REPO_LOG_LEVEL beats this.
+# Env: NAIAD_REPO_LOG_LEVEL
+# level = "info"
+# Emit log lines to stderr. Default: true.
+# Env: NAIAD_REPO_LOG_CONSOLE
+# console = true
+# Uncomment to also write a log file. A relative path is resolved beside the
+# database. Appends across runs.
+# Env: NAIAD_REPO_LOG_FILE
+# file = "repo.log"

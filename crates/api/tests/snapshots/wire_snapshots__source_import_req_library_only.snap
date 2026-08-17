@@ -1,0 +1,8 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "SourceImportReq { plugin_id: \"hydrus\".into(), library_only: true }"
+---
+{
+  "plugin_id": "hydrus",
+  "library_only": true
+}

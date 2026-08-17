@@ -1,0 +1,31 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "TagRelationsDto\n{\n    canonical: \"character:samus\".into(), count: 51, via_alias: true, aliases:\n    RelationSectionDto\n    {\n        items: vec![RelationTagDto { tag: \"samus_aran\".into(), count: 7 }],\n        total: 3\n    }, parents: RelationSectionDto\n    {\n        items:\n        vec![RelationTagDto { tag: \"series:metroid\".into(), count: 40 }],\n        total: 1\n    }, children: RelationSectionDto { items: vec![], total: 0 },\n}"
+---
+{
+  "canonical": "character:samus",
+  "count": 51,
+  "via_alias": true,
+  "aliases": {
+    "items": [
+      {
+        "tag": "samus_aran",
+        "count": 7
+      }
+    ],
+    "total": 3
+  },
+  "parents": {
+    "items": [
+      {
+        "tag": "series:metroid",
+        "count": 40
+      }
+    ],
+    "total": 1
+  },
+  "children": {
+    "items": [],
+    "total": 0
+  }
+}

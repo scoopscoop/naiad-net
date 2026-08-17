@@ -1,0 +1,10 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "TrustRuleDto\n{\n    service: \"ptr\".into(), author: \"aa\".repeat(32), weight: -3, note:\n    Some(\"spammer\".into())\n}"
+---
+{
+  "service": "ptr",
+  "author": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "weight": -3,
+  "note": "spammer"
+}

@@ -1,0 +1,11 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "RelationEdgeDto\n{\n    kind: \"sibling\".into(), from: \"samus\".into(), to:\n    \"character:samus\".into(), service: \"ptr\".into(), author:\n    Some(\"aa\".repeat(32)),\n}"
+---
+{
+  "kind": "sibling",
+  "from": "samus",
+  "to": "character:samus",
+  "service": "ptr",
+  "author": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}

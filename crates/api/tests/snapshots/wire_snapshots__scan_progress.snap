@@ -1,0 +1,9 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "ScanProgress { imported: 5, skipped: 2, total: 10 }"
+---
+{
+  "imported": 5,
+  "skipped": 2,
+  "total": 10
+}

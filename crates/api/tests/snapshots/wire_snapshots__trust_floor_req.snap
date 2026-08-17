@@ -1,0 +1,8 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "TrustFloorReq { floor: Some(2), uses_auto: Some(true) }"
+---
+{
+  "floor": 2,
+  "uses_auto": true
+}

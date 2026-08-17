@@ -1,0 +1,13 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "AutoTrustDto\n{\n    service: \"ptr\".into(), author: \"aa\".repeat(32), total: 40, adopted: 8,\n    suppressed: 12, score: -2, gated: false,\n}"
+---
+{
+  "service": "ptr",
+  "author": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "total": 40,
+  "adopted": 8,
+  "suppressed": 12,
+  "score": -2,
+  "gated": false
+}

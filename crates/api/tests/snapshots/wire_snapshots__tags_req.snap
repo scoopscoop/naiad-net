@@ -1,0 +1,10 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "TagsReq { file: \"a\".repeat(64), tags: vec![\"character:samus\".into()] }"
+---
+{
+  "file": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "tags": [
+    "character:samus"
+  ]
+}

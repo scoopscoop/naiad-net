@@ -1,0 +1,8 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "ParentDto { child: \"character:samus\".into(), parent: \"series:metroid\".into() }"
+---
+{
+  "child": "character:samus",
+  "parent": "series:metroid"
+}

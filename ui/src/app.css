@@ -1,0 +1,103 @@
+/*
+ * Naiad - "Pastel Dusk" design tokens (Atelier redesign, spec 2026-07-03).
+ *
+ * Retint of the original "Darkroom" pass: same token names, softer values -
+ * warm desaturated grounds, a less-glaring text ramp, and a cool periwinkle
+ * accent replacing amber. The monospace "technical layer" stays for the things
+ * that are literally data - hashes, tags, counts, paths.
+ *
+ * Local-first note: system mono stack only; the app never fetches fonts.
+ */
+:root {
+  color-scheme: dark;
+
+  /* surfaces, darkest to lightest */
+  --ink-900: #151310; /* inset fields, viewer */
+  --ink-850: #1c1a18; /* app / gallery body */
+  --ink-800: #232019; /* rails, panels */
+  --ink-750: #262219; /* command bar */
+  --line: #332e26; /* hairline borders */
+  --line-soft: #403a30; /* field borders */
+  --raise: #2b261e; /* hover / chips */
+
+  /* text - soft warm white, less glare than Darkroom */
+  --text: #ece7db;
+  --text-dim: #b0a894;
+  --text-mute: #8f8879;
+  --text-faint: #6f6a5c;
+
+  /* periwinkle accent */
+  --accent: #a9b6e0;
+  --accent-deep: #8494c9;
+  --accent-grad: linear-gradient(150deg, #a9b6e0, #8494c9);
+
+  /* semantic */
+  --ok: #9fce9a; /* "local private", daemon dot, success */
+  /* error / status states */
+  --err: #f0b8af;
+  --err-bg: #5a2a22;
+  --err-line: #6a3530;
+  --ok-line: #3c5a2e;
+  /* warning — the "attention, not failure" state (activity indicator, #34).
+     Reuses the butter hue from the category palette rather than extending the
+     un-tokenized danger family. */
+  --warn: #e6cd93;
+  /* on-accent: warm-dark text on periwinkle CTA */
+  --on-accent: #231a0c;
+  /* chip surfaces */
+  --chip: #211c16;
+  --chip-line: #322c23;
+  /* add-tag dashed border */
+  --field-dashed: #4a4234;
+
+  /* elevation - reserved for true overlays */
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 12px 36px rgba(0, 0, 0, 0.5);
+  --overlay-backdrop: rgba(0, 0, 0, 0.5);
+
+  /* category palette - namespace/tag dots + candy placeholders.
+     Data-driven per-category colors may override these at use sites. */
+  --cat-rose: #e2a0ac;
+  --cat-sage: #a6ccae;
+  --cat-peri: #a9b6e0;
+  --cat-butter: #e6cd93;
+  --cat-lilac: #c6a9dd;
+  --cat-sky: #9ecfdc;
+
+  --mono: ui-monospace, 'Cascadia Code', Consolas, 'IBM Plex Mono', monospace;
+
+  font-family: -apple-system, 'Segoe UI Variable Text', 'Segoe UI', 'Helvetica Neue', Helvetica,
+    Arial, sans-serif;
+  color: var(--text);
+  background: var(--ink-850);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--ink-850);
+}
+
+/* slim warm scrollbars, matching the mockup */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 108, 90, 0.32);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

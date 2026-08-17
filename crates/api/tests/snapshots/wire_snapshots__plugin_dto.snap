@@ -1,0 +1,11 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "PluginDto\n{\n    id: \"hydrus\".into(), name: \"Hydrus importer\".into(), tagger: true,\n    processor: false, source: true\n}"
+---
+{
+  "id": "hydrus",
+  "name": "Hydrus importer",
+  "tagger": true,
+  "processor": false,
+  "source": true
+}

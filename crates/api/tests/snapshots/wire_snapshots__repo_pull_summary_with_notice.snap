@@ -1,0 +1,9 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "RepoPullSummary { matched_files: 3, mappings: 7, notice: Some(\"repo ptr: privacy ceiling below floor; querying at 16 bits\".into()), }"
+---
+{
+  "matched_files": 3,
+  "mappings": 7,
+  "notice": "repo ptr: privacy ceiling below floor; querying at 16 bits"
+}

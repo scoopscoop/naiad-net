@@ -1,0 +1,7 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "SiblingRemoveReq { bad: \"samus_aran\".into() }"
+---
+{
+  "bad": "samus_aran"
+}

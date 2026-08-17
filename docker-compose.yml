@@ -1,0 +1,31 @@
+# Temporary test deployment of a naiad-repo node.
+#   docker compose up -d --build
+#   curl http://<host>:9090/health
+# State (repo.db, repo.toml, repo.key) persists in the named volume; wipe the
+# whole test repo with: docker compose down -v
+
+services:
+  repo:
+    build: .
+    image: naiad-repo:test
+    container_name: naiad-repo-test
+    ports:
+      - "9090:9090"
+    volumes:
+      - repo-data:/data
+    restart: unless-stopped
+    # The image already sets NAIAD_REPO_DB=/data/repo.db and
+    # NAIAD_REPO_ADDR=0.0.0.0:9090. Add entries below to override settings
+    # without rebuilding the image or editing repo.toml inside the volume.
+    # (A bare `environment:` with every entry commented is invalid YAML —
+    # compose requires a mapping.)
+    environment:
+      NAIAD_REPO_NAME: "NOS"
+    #   NAIAD_REPO_LOG_LEVEL: "info"
+    #   NAIAD_REPO_K: "1000"
+    #   NAIAD_REPO_KEY: "<64-char hex Ed25519 pubkey for /repo/caps>"
+    #   NAIAD_REPO_BRIDGE_ENABLED: "true"
+    #   NAIAD_REPO_BRIDGE_PTR_KEY: "<64-char hex>"
+
+volumes:
+  repo-data:

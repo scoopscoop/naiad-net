@@ -1,0 +1,13 @@
+---
+source: crates/netproto/src/bucket.rs
+assertion_line: 1462
+expression: streaming
+---
+{
+  "version": 8,
+  "prefix_bits": 8,
+  "buckets": [
+    "0000000000000000000000000000000000000000000000000000000000000000"
+  ],
+  "stream": true
+}

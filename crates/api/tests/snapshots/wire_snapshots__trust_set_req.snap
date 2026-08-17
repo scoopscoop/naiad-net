@@ -1,0 +1,10 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "TrustSetReq\n{ service: \"ptr\".into(), author: \"aa\".repeat(32), weight: 5, note: None }"
+---
+{
+  "service": "ptr",
+  "author": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "weight": 5,
+  "note": null
+}

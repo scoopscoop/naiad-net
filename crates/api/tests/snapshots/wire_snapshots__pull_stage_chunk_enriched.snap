@@ -1,0 +1,19 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "PullStage\n{\n    repo: \"ptr\".into(), index: 1, total: 2, phase: \"chunk\".into(), chunk: 3,\n    chunk_total: 10, bytes: 4_567_890, domain: Some(\"blake3\".into()), hashes: 50_000,\n    tags: 1_200_000, elapsed_ms: 3_456, window: 8, retries: 0,\n}"
+---
+{
+  "repo": "ptr",
+  "index": 1,
+  "total": 2,
+  "phase": "chunk",
+  "chunk": 3,
+  "chunk_total": 10,
+  "bytes": 4567890,
+  "domain": "blake3",
+  "hashes": 50000,
+  "tags": 1200000,
+  "elapsed_ms": 3456,
+  "window": 8,
+  "retries": 0
+}

@@ -1,0 +1,62 @@
+[package]
+name = "naiad-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+bench = false
+
+[[bin]]
+name = "naiad-repo"
+path = "src/main.rs"
+bench = false
+
+[lints]
+workspace = true
+
+[dependencies]
+naiad-core.workspace = true
+naiad-netproto.workspace = true
+naiad-plugin.workspace = true
+naiad-plugin-hydrus.workspace = true
+rusqlite.workspace = true
+rusqlite_migration.workspace = true
+axum.workspace = true
+tokio = { workspace = true, features = ["signal"] }
+tokio-stream.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+clap.workspace = true
+hex.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+serde_ignored.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+tower-http = { workspace = true, features = ["compression-gzip", "compression-zstd"] }
+ureq = { workspace = true, features = ["tls"] }
+flate2.workspace = true
+rustls.workspace = true
+getrandom.workspace = true
+blake3.workspace = true
+tower.workspace = true
+http-body.workspace = true
+sysinfo.workspace = true
+
+[dev-dependencies]
+# Test-only writer for synthetic Hydrus snapshots; the `[dependencies]` entry
+# above stays featureless so normal builds keep the read-only crate read-only.
+naiad-plugin-hydrus = { workspace = true, features = ["fixture"] }
+criterion.workspace = true
+tower.workspace = true
+tempfile.workspace = true
+serde_json.workspace = true
+proptest.workspace = true
+
+[[bench]]
+name = "pull"
+harness = false

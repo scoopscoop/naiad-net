@@ -1,0 +1,7 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "RepoPullReq { name: \"ptr\".into() }"
+---
+{
+  "name": "ptr"
+}

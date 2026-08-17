@@ -1,0 +1,9 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "BlockAddReq { kind: \"author\".into(), target: \"ab\".repeat(32), note: None }"
+---
+{
+  "kind": "author",
+  "target": "abababababababababababababababababababababababababababababababab",
+  "note": null
+}

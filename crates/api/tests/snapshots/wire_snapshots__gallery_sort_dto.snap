@@ -1,0 +1,8 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "GallerySortDto { key: \"imported_at\".into(), direction: \"desc\".into() }"
+---
+{
+  "key": "imported_at",
+  "direction": "desc"
+}

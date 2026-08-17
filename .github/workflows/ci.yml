@@ -1,0 +1,81 @@
+# CI: fmt + clippy + test on Linux and Windows, plus frontend check/test/build.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: fmt + clippy + test (linux)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Format check
+        run: cargo fmt --all --check
+
+      - name: Clippy (warnings = errors)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test --workspace
+
+      - name: Check naiad-plugin-hydrus without fixture feature
+        # cargo test --workspace always activates the `fixture` feature via
+        # dev-dependencies (naiad-daemon, naiad-server both enable it). This
+        # step uses --lib, which does not pull dev-deps, so the feature stays
+        # off. It guards against non-gated references to fixture:: that would
+        # compile with dev-deps but break a plain `cargo build --release`.
+        run: cargo check -p naiad-plugin-hydrus --lib
+
+  test-windows:
+    name: test (windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Test
+        run: cargo test --workspace
+
+  frontend:
+    name: frontend check + test + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install dependencies
+        run: npm --prefix ui ci
+
+      - name: Type-check (svelte-check + tsc)
+        run: npm --prefix ui run check
+
+      - name: Test (vitest)
+        run: npm --prefix ui test
+
+      - name: Build
+        run: npm --prefix ui run build

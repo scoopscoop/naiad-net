@@ -1,0 +1,9 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "TagSuggestionDto\n{ namespace: \"character\".into(), subtag: \"samus\".into(), count: 12 }"
+---
+{
+  "namespace": "character",
+  "subtag": "samus",
+  "count": 12
+}

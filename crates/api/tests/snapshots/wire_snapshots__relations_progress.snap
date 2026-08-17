@@ -1,0 +1,10 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "RelationsProgress\n{ edges_done: 4096, edges_total: 614_000, siblings: 4000, parents: 96 }"
+---
+{
+  "edges_done": 4096,
+  "edges_total": 614000,
+  "siblings": 4000,
+  "parents": 96
+}

@@ -1,0 +1,13 @@
+# Keep the build context to what `cargo build -p naiad-server` needs:
+# the workspace manifests, lockfile, and crates/.
+.git/
+target/
+**/target/
+.claude/
+.worktrees/
+ui/
+dist/
+docs/
+scripts/
+*.log
+*.md

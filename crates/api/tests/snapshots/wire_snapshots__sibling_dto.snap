@@ -1,0 +1,8 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "SiblingDto { bad: \"samus_aran\".into(), ideal: \"character:samus\".into() }"
+---
+{
+  "bad": "samus_aran",
+  "ideal": "character:samus"
+}

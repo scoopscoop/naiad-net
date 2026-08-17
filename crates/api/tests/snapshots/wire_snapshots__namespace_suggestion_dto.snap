@@ -1,0 +1,8 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "NamespaceSuggestionDto { namespace: \"character\".into(), tag_count: 40 }"
+---
+{
+  "namespace": "character",
+  "tag_count": 40
+}

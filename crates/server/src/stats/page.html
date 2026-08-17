@@ -1,0 +1,502 @@
+<!--naiad-stats-dashboard-->
+<meta charset="utf-8">
+<title>naiad-repo stats</title>
+<style>
+:root {
+  --ink-900: #151310;
+  --ink-850: #1c1a18;
+  --ink-800: #232019;
+  --line:    #332e26;
+  --accent:  #a9b6e0;
+  --ink-fg:  #d8d2c8;
+  --ink-dim: #8a8378;
+  --cat-2xx: #a6ccae;
+  --cat-3xx: #c4b8a8;
+  --cat-4xx: #e6cd93;
+  --cat-5xx: #e2a0ac;
+}
+html,body {
+  background: var(--ink-900);
+  color: var(--ink-fg);
+  font: 12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  margin: 0;
+}
+.wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
+h1 { font-size: 14px; font-weight: 600; letter-spacing: .02em; margin: 0 0 4px; }
+.marker {
+  font-size: 10px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--accent); margin: 28px 0 8px;
+}
+.panel { background: var(--ink-800); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+.odo { display: flex; flex-wrap: wrap; gap: 24px 40px; }
+.odo-item b { font-weight: 600; font-size: 13px; display: block; }
+.odo-item span { color: var(--ink-dim); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; display: block; margin-top: 2px; }
+.rangebar { display: inline-flex; border: 1px solid var(--line); border-radius: 5px; overflow: hidden; }
+.rangebar button {
+  background: transparent; color: var(--ink-dim); border: 0;
+  border-right: 1px solid var(--line); padding: 5px 14px;
+  font: inherit; cursor: pointer; font-size: 11px;
+}
+.rangebar button:last-child { border-right: 0; }
+.rangebar button.active { background: var(--accent); color: var(--ink-900); font-weight: 600; }
+.rangebar button:hover:not(.active) { color: var(--ink-fg); }
+.chart-host { position: relative; height: 110px; margin: 6px 0 4px; }
+svg.chart { width: 100%; height: 100%; display: block; overflow: visible; }
+.axis-label {
+  position: absolute; left: 0; font-size: 10px; font-weight: 500; line-height: 1;
+  color: var(--ink-dim); pointer-events: none;
+}
+.axis-label.top { top: 0; }
+.axis-label.bottom { bottom: 0; }
+.nodata { color: var(--ink-dim); font-style: italic; font-size: 11px; padding: 6px 0; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.metric-label { color: var(--ink-dim); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 2px; }
+.metric-value { font-size: 12px; font-weight: 500; }
+.ep-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.ep-table th {
+  color: var(--ink-dim); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+  text-align: left; padding: 4px 8px 4px 0; border-bottom: 1px solid var(--line); font-weight: 500;
+}
+.ep-table td { padding: 5px 8px 5px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ep-table tr:last-child td { border-bottom: 0; }
+.status-dots { display: flex; gap: 8px; flex-wrap: wrap; }
+.status-dot { display: flex; align-items: center; gap: 3px; font-size: 11px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.dot-2xx { background: var(--cat-2xx); }
+.dot-3xx { background: var(--cat-3xx); }
+.dot-4xx { background: var(--cat-4xx); }
+.dot-5xx { background: var(--cat-5xx); }
+.legend-note { color: var(--ink-dim); font-size: 10px; margin-top: 10px; font-style: italic; line-height: 1.6; }
+.banner {
+  background: var(--cat-5xx); color: var(--ink-900); padding: 8px 14px;
+  border-radius: 5px; display: none; font-weight: 600; margin-bottom: 16px;
+}
+.banner.on { display: block; }
+.nav-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 8px; }
+.ver-chip { color: var(--ink-dim); font-size: 11px; }
+@media (max-width: 680px) {
+  .grid-2,.grid-3 { grid-template-columns: 1fr; }
+}
+</style>
+
+<div class="wrap">
+  <div class="nav-row">
+    <h1>naiad-repo — server statistics</h1>
+    <span class="ver-chip" id="ver-chip"></span>
+  </div>
+  <div class="banner" id="banner">stats unavailable</div>
+
+  <div class="marker">All-time</div>
+  <div class="panel odo" id="odometers">
+    <div class="odo-item"><b>—</b><span>requests served</span></div>
+    <div class="odo-item"><b>—</b><span>bytes shipped</span></div>
+    <div class="odo-item"><b>—</b><span>busiest hour ever</span></div>
+    <div class="odo-item"><b>—</b><span>top prefix</span></div>
+  </div>
+
+  <div class="marker">Range</div>
+  <div class="rangebar" id="range-bar">
+    <button data-r="24h" class="active">24h</button>
+    <button data-r="7d">7d</button>
+    <button data-r="90d">90d</button>
+    <button data-r="all">all</button>
+  </div>
+
+  <div class="marker">System Health</div>
+  <div class="panel">
+    <div class="grid-2">
+      <div>
+        <div class="metric-label">CPU % (global)</div>
+        <div class="chart-host" id="chart-cpu"></div>
+      </div>
+      <div>
+        <div class="metric-label">Process RSS</div>
+        <div class="chart-host" id="chart-rss"></div>
+      </div>
+      <div>
+        <div class="metric-label">Store Disk</div>
+        <div class="chart-host" id="chart-disk"></div>
+      </div>
+      <div>
+        <div class="metric-label">Network In Rate</div>
+        <div class="chart-host" id="chart-net-rx"></div>
+      </div>
+      <div>
+        <div class="metric-label">Network Out Rate</div>
+        <div class="chart-host" id="chart-net-tx"></div>
+      </div>
+    </div>
+    <div class="metric-label" style="margin-top:14px;">Uptime</div>
+    <div class="metric-value" id="uptime-val">—</div>
+  </div>
+
+  <div class="marker">Request Quality</div>
+  <div class="panel" id="requests-panel">
+    <div class="nodata">no data yet</div>
+  </div>
+
+  <div class="marker">Store Growth</div>
+  <div class="panel">
+    <div class="grid-3">
+      <div>
+        <div class="metric-label">Hashes</div>
+        <div class="chart-host" id="chart-hashes"></div>
+      </div>
+      <div>
+        <div class="metric-label">Tags</div>
+        <div class="chart-host" id="chart-tags"></div>
+      </div>
+      <div>
+        <div class="metric-label">Mappings</div>
+        <div class="chart-host" id="chart-mappings"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="marker">Bridge Sidecar Store</div>
+  <div class="panel">
+    <div class="grid-3">
+      <div>
+        <div class="metric-label">Hashes (Sidecar)</div>
+        <div class="chart-host" id="chart-bridge-hashes"></div>
+      </div>
+      <div>
+        <div class="metric-label">Tags (Sidecar)</div>
+        <div class="chart-host" id="chart-bridge-tags"></div>
+      </div>
+      <div>
+        <div class="metric-label">Mappings ~ (Sidecar)</div>
+        <div class="chart-host" id="chart-bridge-mappings"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="marker">Users Served</div>
+  <div class="panel">
+    <div class="grid-2">
+      <div>
+        <div class="metric-label">Unique per Hour</div>
+        <div class="chart-host" id="chart-users-hour"></div>
+      </div>
+      <div>
+        <div class="metric-label">Unique per Day</div>
+        <div class="chart-host" id="chart-users-day"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="marker">PTR Freshness</div>
+  <div class="panel">
+    <div class="grid-3">
+      <div>
+        <div class="metric-label">Applied Update Cursor</div>
+        <div class="chart-host" id="chart-sync-cursor"></div>
+      </div>
+      <div>
+        <div class="metric-label">Last-Poll Age (s)</div>
+        <div class="chart-host" id="chart-sync-age"></div>
+      </div>
+      <div>
+        <div class="metric-label">Rows per Cycle</div>
+        <div class="chart-host" id="chart-sync-rows"></div>
+      </div>
+    </div>
+    <div id="sync-meta" style="margin-top:10px;font-size:11px;color:var(--ink-dim);"></div>
+  </div>
+
+  <div class="legend-note">
+    Notes: bytes = buffered responses only (streamed responses recorded as 0 bytes).
+    Latency percentiles for 7d/90d/all ranges are averaged per-window approximations, not exact cross-window percentiles.
+    CPU = global system CPU%. Net rates derived by differencing adjacent cumulative samples; counter resets appear as gaps, not negative spikes.
+  </div>
+  <div style="color:var(--ink-dim);font-size:10px;margin-top:24px;padding-bottom:16px;" id="generated-at"></div>
+</div>
+<script>
+var NS = "http://www.w3.org/2000/svg";
+var RANGE = "24h";
+
+/* ── formatting ─────────────────────────────────────────────────────────── */
+function esc(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function fmtBytes(n) {
+  if (n == null || n === "") return "—";
+  n = +n;
+  if (n >= 1073741824) return (n / 1073741824).toFixed(2) + " GiB";
+  if (n >= 1048576)    return (n / 1048576).toFixed(1) + " MiB";
+  if (n >= 1024)       return (n / 1024).toFixed(1) + " KiB";
+  return n.toFixed(1) + " B";
+}
+function fmtNum(n) {
+  if (n == null) return "—";
+  return Number(n).toLocaleString("en-US");
+}
+function fmtTs(n) {
+  if (!n) return "—";
+  try { return new Date(n * 1000).toISOString().replace("T", " ").slice(0, 19) + " UTC"; }
+  catch(e) { return String(n); }
+}
+function fmtDuration(s) {
+  if (s == null) return "—";
+  s = Math.floor(+s);
+  var d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600),
+      m = Math.floor((s % 3600) / 60);
+  var out = [];
+  if (d) out.push(d + "d");
+  if (h) out.push(h + "h");
+  out.push(m + "m");
+  return out.join(" ");
+}
+
+/* ── SVG chart ───────────────────────────────────────────────────────────── */
+// gapOnDecrease: opt-in flag for monotonic cumulative series (e.g. sync
+// cursor) where a value decrease signals a counter reset that should render
+// as a gap rather than a line. Oscillating series (cpu%, rss, etc.) must
+// NOT set this — it would erase every descending segment.
+function drawLineChart(host, points, stroke, filled, fmtY, gapOnDecrease) {
+  host.innerHTML = "";
+  var pts = (points || []).filter(function(p) {
+    return p && p[1] != null && isFinite(p[1]);
+  });
+  if (pts.length === 0) {
+    var nd = document.createElement("div");
+    nd.className = "nodata"; nd.textContent = "no data yet";
+    host.appendChild(nd); return;
+  }
+
+  // pT/pB reserve room (in stretched units) for the overlaid axis labels.
+  var W = 1000, H = 100, pL = 4, pR = 4, pT = 14, pB = 12;
+  var xs = pts.map(function(p){return p[0];}),
+      ys = pts.map(function(p){return p[1];});
+  var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
+  var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+  function sx(v) { return x1===x0 ? W/2 : pL + (v-x0)/(x1-x0)*(W-pL-pR); }
+  function sy(v) { return y1===y0 ? H/2 : pT + (1-(v-y0)/(y1-y0))*(H-pT-pB); }
+
+  // The viewBox is stretched to fill the host, so geometry scales
+  // non-uniformly; strokes use vector-effect to stay 1.5px on screen, and
+  // text lives OUTSIDE the SVG (HTML overlays) so it renders at true pixel
+  // size instead of shrinking with the coordinate space.
+  var svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  svg.setAttribute("preserveAspectRatio", "none");
+  svg.setAttribute("class", "chart");
+
+  // Build path, optionally gapping on counter resets.
+  var d = "";
+  for (var i = 0; i < pts.length; i++) {
+    var px = sx(pts[i][0]).toFixed(1), py = sy(pts[i][1]).toFixed(1);
+    var isGap = gapOnDecrease && i > 0 && pts[i][1] < pts[i-1][1];
+    d += (i === 0 || isGap) ? ("M" + px + " " + py) : (" L" + px + " " + py);
+  }
+
+  // Single-point marker: a zero-length round-capped stroke reads as a dot
+  // and, unlike a circle, stays round under the non-uniform viewBox stretch.
+  if (pts.length === 1) {
+    var cx = sx(pts[0][0]).toFixed(1), cy = sy(pts[0][1]).toFixed(1);
+    var dot = document.createElementNS(NS, "path");
+    dot.setAttribute("d", "M" + cx + " " + cy + " L" + cx + " " + cy);
+    dot.setAttribute("stroke", stroke);
+    dot.setAttribute("stroke-width", "5");
+    dot.setAttribute("stroke-linecap", "round");
+    dot.setAttribute("vector-effect", "non-scaling-stroke");
+    svg.appendChild(dot);
+  }
+
+  if (filled && pts.length > 1) {
+    var area = document.createElementNS(NS, "path");
+    area.setAttribute("d", d + " L" + sx(x1).toFixed(1) + " " + H +
+                           " L" + sx(x0).toFixed(1) + " " + H + " Z");
+    area.setAttribute("fill", stroke);
+    area.setAttribute("opacity", "0.1");
+    svg.appendChild(area);
+  }
+
+  if (pts.length > 1) {
+    var path = document.createElementNS(NS, "path");
+    path.setAttribute("d", d);
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", stroke);
+    path.setAttribute("stroke-width", "1.5");
+    path.setAttribute("stroke-linecap", "round");
+    path.setAttribute("stroke-linejoin", "round");
+    path.setAttribute("vector-effect", "non-scaling-stroke");
+    svg.appendChild(path);
+  }
+
+  host.appendChild(svg);
+
+  // Y-axis labels: top (max) and bottom (min), as HTML overlays at the
+  // design system's 10px micro size — unaffected by the SVG scaling.
+  if (fmtY && pts.length > 0) {
+    function addLabel(cls, text) {
+      var t = document.createElement("div");
+      t.className = "axis-label " + cls;
+      t.textContent = text;
+      host.appendChild(t);
+    }
+    addLabel("top", fmtY(y1));
+    if (y1 !== y0) addLabel("bottom", fmtY(y0));
+  }
+}
+
+/* ── net rate derivation ─────────────────────────────────────────────────── */
+// Drops intervals where the counter decreased (counter reset / interface
+// reset); gapOnDecrease is NOT used in drawLineChart for rates because the
+// series is already gap-safe after toRateSeries filters out resets.
+function toRateSeries(cumPts) {
+  var out = [];
+  for (var i = 1; i < cumPts.length; i++) {
+    var t0 = cumPts[i-1][0], v0 = cumPts[i-1][1];
+    var t1 = cumPts[i][0],   v1 = cumPts[i][1];
+    var dt = t1 - t0;
+    if (dt <= 0 || v1 < v0) continue;
+    out.push([t1, (v1 - v0) / dt]);
+  }
+  return out;
+}
+
+/* ── odometer strip ──────────────────────────────────────────────────────── */
+function renderOdometers(j) {
+  var o = j.odometers;
+  var el = document.getElementById("odometers");
+  var bhDate = (o.busiest_hour && o.busiest_hour.at)
+    ? "<span style='font-size:10px;color:var(--ink-dim)'>" + esc(fmtTs(o.busiest_hour.at)) + "</span>"
+    : "";
+  var topKey = (o.top_prefix && o.top_prefix.key) ? esc(o.top_prefix.key) : "—";
+  el.innerHTML =
+    "<div class='odo-item'><b>" + fmtNum(o.req_total) + "</b><span>requests served</span></div>" +
+    "<div class='odo-item'><b>" + fmtBytes(o.bytes_shipped_total) + "</b><span>bytes shipped</span></div>" +
+    "<div class='odo-item'><b>" + fmtNum(o.busiest_hour ? o.busiest_hour.count : 0) +
+      "</b><span>busiest hour ever</span>" + bhDate + "</div>" +
+    "<div class='odo-item'><b>" + topKey +
+      "</b><span>top prefix · " + fmtNum(o.top_prefix ? o.top_prefix.count : 0) + " req</span></div>";
+}
+
+/* ── request quality ─────────────────────────────────────────────────────── */
+function renderRequests(j) {
+  var panel = document.getElementById("requests-panel");
+  var by = j.by_endpoint || {};
+  var eps = Object.keys(by).sort();
+  if (eps.length === 0) {
+    panel.innerHTML = "<div class='nodata'>no data yet</div>"; return;
+  }
+  var rows = eps.map(function(ep) {
+    var e = by[ep];
+    var r = e.requests || {};
+    var n2 = r["2xx"] || 0, n3 = r["3xx"] || 0, n4 = r["4xx"] || 0, n5 = r["5xx"] || 0;
+    var l = e.lat_ms || {};
+    var p50 = l.p50 != null ? l.p50.toFixed(1) : "—";
+    var p95 = l.p95 != null ? l.p95.toFixed(1) : "—";
+    var p99 = l.p99 != null ? l.p99.toFixed(1) : "—";
+    var dots =
+      "<span class='status-dot'><span class='dot dot-2xx'></span>" + fmtNum(n2) + "</span>";
+    if (n3) dots +=
+      "<span class='status-dot'><span class='dot dot-3xx'></span>" + fmtNum(n3) + "</span>";
+    dots +=
+      "<span class='status-dot'><span class='dot dot-4xx'></span>" + fmtNum(n4) + "</span>" +
+      "<span class='status-dot'><span class='dot dot-5xx'></span>" + fmtNum(n5) + "</span>";
+    return "<tr>" +
+      "<td>" + esc(ep) + "</td>" +
+      "<td><div class='status-dots'>" + dots + "</div></td>" +
+      "<td>" + fmtBytes(e.bytes) + "</td>" +
+      "<td>" + p50 + " / " + p95 + " / " + p99 + " ms</td>" +
+      "</tr>";
+  }).join("");
+  panel.innerHTML =
+    "<table class='ep-table'><thead><tr>" +
+      "<th>Endpoint</th>" +
+      "<th>Status (2xx / 3xx / 4xx / 5xx)</th>" +
+      "<th>Bytes served</th>" +
+      "<th>p50 / p95 / p99 lat</th>" +
+    "</tr></thead><tbody>" + rows + "</tbody></table>" +
+    "<div class='legend-note' style='margin-top:8px;'>" +
+      "<span class='dot dot-2xx' style='display:inline-block;vertical-align:middle;margin-right:2px;'></span>2xx&nbsp;&nbsp;" +
+      "<span class='dot dot-3xx' style='display:inline-block;vertical-align:middle;margin-right:2px;'></span>3xx&nbsp;&nbsp;" +
+      "<span class='dot dot-4xx' style='display:inline-block;vertical-align:middle;margin-right:2px;'></span>4xx&nbsp;&nbsp;" +
+      "<span class='dot dot-5xx' style='display:inline-block;vertical-align:middle;margin-right:2px;'></span>5xx" +
+    "</div>";
+}
+
+/* ── main render ─────────────────────────────────────────────────────────── */
+function render(j) {
+  var s = j.series || {};
+  var acc = "var(--accent)";
+
+  renderOdometers(j);
+
+  document.getElementById("uptime-val").textContent = fmtDuration(j.uptime_secs);
+  document.getElementById("ver-chip").textContent =
+    "up " + fmtDuration(j.uptime_secs) + " · " + (j.server_version || "");
+  document.getElementById("generated-at").textContent =
+    "generated " + fmtTs(j.generated_at) + " · " + (j.server_version || "");
+
+  // System health — oscillating series, no gapOnDecrease.
+  drawLineChart(document.getElementById("chart-cpu"),  s.cpu_pct,          acc, true,  function(v){ return v.toFixed(0)+"%"; });
+  drawLineChart(document.getElementById("chart-rss"),  s.rss_bytes,        acc, true,  fmtBytes);
+  drawLineChart(document.getElementById("chart-disk"), s.store_disk_bytes, acc, true,  fmtBytes);
+  // Net rates: toRateSeries already filters resets; resulting rate series is
+  // non-decreasing-guaranteed, so no gapOnDecrease needed here either.
+  var rxRate = toRateSeries(s.net_rx_bytes || []);
+  var txRate = toRateSeries(s.net_tx_bytes || []);
+  drawLineChart(document.getElementById("chart-net-rx"), rxRate, acc, false, function(v){ return fmtBytes(v)+"/s"; });
+  drawLineChart(document.getElementById("chart-net-tx"), txRate, acc, false, function(v){ return fmtBytes(v)+"/s"; });
+
+  renderRequests(j);
+
+  drawLineChart(document.getElementById("chart-hashes"),   s.hashes_stored,   acc, true, function(v){ return fmtNum(Math.round(v)); });
+  drawLineChart(document.getElementById("chart-tags"),      s.tags_stored,     acc, true, function(v){ return fmtNum(Math.round(v)); });
+  drawLineChart(document.getElementById("chart-mappings"), s.mappings_stored,  acc, true, function(v){ return fmtNum(Math.round(v)); });
+
+  // Bridge sidecar gauges — only populated on sidecar serve nodes.
+  // chart-host renders "no data yet" when the series is empty/absent.
+  drawLineChart(document.getElementById("chart-bridge-hashes"),   s.bridge_hashes_stored,   acc, true, function(v){ return fmtNum(Math.round(v)); });
+  drawLineChart(document.getElementById("chart-bridge-tags"),      s.bridge_tags_stored,     acc, true, function(v){ return fmtNum(Math.round(v)); });
+  drawLineChart(document.getElementById("chart-bridge-mappings"), s.bridge_mappings_stored,  acc, true, function(v){ return fmtNum(Math.round(v))+" ~"; });
+
+  drawLineChart(document.getElementById("chart-users-hour"), s.users_hour, acc, true, function(v){ return fmtNum(Math.round(v)); });
+  drawLineChart(document.getElementById("chart-users-day"),  s.users_day,  acc, true, function(v){ return fmtNum(Math.round(v)); });
+
+  // PTR freshness — sync cursor is monotonic; use gapOnDecrease for it only.
+  drawLineChart(document.getElementById("chart-sync-cursor"), s.sync_last_applied_update, acc, false,
+    function(v){ return fmtNum(Math.round(v)); }, true /* gapOnDecrease */);
+  drawLineChart(document.getElementById("chart-sync-age"),  s.sync_last_poll_age_secs, acc, true, function(v){ return v.toFixed(0)+"s"; });
+  drawLineChart(document.getElementById("chart-sync-rows"), s.sync_rows_last_cycle,    acc, true, function(v){ return fmtNum(Math.round(v)); });
+
+  var ageArr = s.sync_last_poll_age_secs || [];
+  var syncMeta = document.getElementById("sync-meta");
+  syncMeta.textContent = ageArr.length > 0
+    ? "Last poll: " + ageArr[ageArr.length-1][1].toFixed(0) + "s ago"
+    : "";
+}
+
+/* ── fetch + error handling ──────────────────────────────────────────────── */
+async function load() {
+  var banner = document.getElementById("banner");
+  try {
+    var res = await fetch("/api/stats?range=" + RANGE);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    var j = await res.json();
+    banner.classList.remove("on");
+    render(j);
+  } catch(e) {
+    banner.textContent = "stats unavailable";
+    banner.classList.add("on");
+  }
+}
+
+/* ── range picker ────────────────────────────────────────────────────────── */
+document.getElementById("range-bar").addEventListener("click", function(ev) {
+  var btn = ev.target.closest("button");
+  if (!btn) return;
+  RANGE = btn.dataset.r;
+  document.querySelectorAll("#range-bar button").forEach(function(b) {
+    b.classList.toggle("active", b === btn);
+  });
+  load();
+});
+
+load();
+</script>

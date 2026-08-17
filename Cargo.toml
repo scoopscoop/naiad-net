@@ -1,0 +1,93 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/bootstrap",
+    "crates/core",
+    "crates/db",
+    "crates/indexer",
+    "crates/api",
+    "crates/netproto",
+    "crates/server",
+    "crates/daemon",
+    "crates/cli",
+    "crates/test-support",
+    "crates/plugin",
+    "crates/plugin-hydrus",
+]
+exclude = [
+    "ui/src-tauri",
+]
+
+[workspace.package]
+version = "0.3.2"
+edition = "2024"
+license = "WTFPL"
+repository = "https://github.com/scoopscoop/naiad-net"
+rust-version = "1.85"
+
+[workspace.dependencies]
+# Internal crates
+naiad-bootstrap = { path = "crates/bootstrap" }
+naiad-plugin = { path = "crates/plugin" }
+naiad-core = { path = "crates/core" }
+naiad-db = { path = "crates/db" }
+naiad-indexer = { path = "crates/indexer" }
+naiad-api = { path = "crates/api" }
+naiad-netproto = { path = "crates/netproto" }
+naiad-server = { path = "crates/server" }
+naiad-daemon = { path = "crates/daemon" }
+naiad-test-support = { path = "crates/test-support" }
+naiad-plugin-hydrus = { path = "crates/plugin-hydrus" }
+
+# External
+blake3 = "1"
+imagesize = "0.13"
+rusqlite = { version = "0.32", features = ["bundled", "hooks"] }
+rusqlite_migration = "1"
+walkdir = "2"
+clap = { version = "4", features = ["derive"] }
+anyhow = "1"
+thiserror = "2"
+tempfile = "3"
+criterion = "0.5"
+insta = { version = "1", features = ["json"] }
+proptest = "1"
+axum = { version = "0.8" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "fs", "sync", "time"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "webp", "bmp", "tiff"] }
+jpeg-decoder = { version = "0.3", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+http-body = "1"
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["fs", "trace"] }
+rust-embed = { version = "8", features = ["mime-guess"] }
+ureq = { version = "2", default-features = false, features = ["json", "gzip"] }
+flate2 = "1"
+rustls = { version = "0.23", default-features = false, features = ["ring", "tls12", "logging", "std"] }
+notify = "8"
+rayon = "1"
+notify-debouncer-full = "0.7"
+tokio-stream = "0.1"
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+hex = "0.4"
+sha2 = "0.10"
+rand_core = { version = "0.6", features = ["getrandom"] }
+getrandom = "0.2"
+toml = "0.8"
+toml_edit = "0.22"
+serde_ignored = "0.1"
+sysinfo = { version = "0.32", default-features = false, features = ["system", "network"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+# Faster, smaller release builds (speed is a headline requirement).
+[profile.release]
+lto = "thin"
+codegen-units = 1

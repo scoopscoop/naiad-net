@@ -1,0 +1,8 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "ScanError { path: \"/x\".into(), message: \"boom\".into() }"
+---
+{
+  "path": "/x",
+  "message": "boom"
+}

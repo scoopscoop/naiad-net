@@ -1,0 +1,14 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+assertion_line: 270
+expression: "TagDetailDto\n{\n    tag: \"creator:botpic\".into(), presence: \"pulled\".into(), services:\n    vec![\"ptr\".into()], relations: false, origin: Some(\"wd14-tagger\".into()),\n}"
+---
+{
+  "tag": "creator:botpic",
+  "presence": "pulled",
+  "services": [
+    "ptr"
+  ],
+  "relations": false,
+  "origin": "wd14-tagger"
+}

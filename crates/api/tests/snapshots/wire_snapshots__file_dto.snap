@@ -1,0 +1,14 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "FileDto\n{\n    hash: \"a\".repeat(64), name: \"pic.png\".into(), size: 1234, path:\n    \"/lib/pic.png\".into(), imported_at: 100, created_at: Some(80),\n    modified_at: Some(90), mime: Some(\"image/png\".into()),\n}"
+---
+{
+  "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "name": "pic.png",
+  "size": 1234,
+  "path": "/lib/pic.png",
+  "imported_at": 100,
+  "created_at": 80,
+  "modified_at": 90,
+  "mime": "image/png"
+}

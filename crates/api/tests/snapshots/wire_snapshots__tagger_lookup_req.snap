@@ -1,0 +1,11 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "TaggerLookupReq\n{ plugin_id: \"hydrus\".into(), files: vec![\"a\".repeat(64)], apply: false }"
+---
+{
+  "plugin_id": "hydrus",
+  "files": [
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  ],
+  "apply": false
+}

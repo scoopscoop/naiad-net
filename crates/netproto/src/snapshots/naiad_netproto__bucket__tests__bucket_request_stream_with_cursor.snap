@@ -1,0 +1,14 @@
+---
+source: crates/netproto/src/bucket.rs
+assertion_line: 1463
+expression: with_cursor
+---
+{
+  "version": 8,
+  "prefix_bits": 8,
+  "buckets": [
+    "0000000000000000000000000000000000000000000000000000000000000000"
+  ],
+  "stream": true,
+  "resume_at": "abababababababababababababababababababababababababababababababab"
+}

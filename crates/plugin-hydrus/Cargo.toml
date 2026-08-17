@@ -1,0 +1,31 @@
+[package]
+name = "naiad-plugin-hydrus"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lib]
+bench = false
+
+[features]
+# Test-only: exposes `fixture::write_snapshot`, which *writes* a synthetic
+# Hydrus snapshot. Off by default so the shipped library keeps its read-only
+# promise; enabled through `[dev-dependencies]` by the crates whose tests need
+# it (naiad-daemon, naiad-server).
+fixture = []
+
+[dependencies]
+anyhow.workspace = true
+naiad-core.workspace = true
+naiad-plugin.workspace = true
+rusqlite.workspace = true
+hex.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

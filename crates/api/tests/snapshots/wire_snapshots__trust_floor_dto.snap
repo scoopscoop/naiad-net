@@ -1,0 +1,8 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "TrustFloorDto { floor: None, uses_auto: false }"
+---
+{
+  "floor": null,
+  "uses_auto": false
+}

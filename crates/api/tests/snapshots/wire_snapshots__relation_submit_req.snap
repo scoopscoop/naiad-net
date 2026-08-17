@@ -1,0 +1,11 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "RelationSubmitReq\n{\n    name: \"ptr\".into(), kind: \"sibling\".into(), from: \"samus_aran\".into(), to:\n    \"character:samus\".into(), op: \"add\".into(),\n}"
+---
+{
+  "name": "ptr",
+  "kind": "sibling",
+  "from": "samus_aran",
+  "to": "character:samus",
+  "op": "add"
+}

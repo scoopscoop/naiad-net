@@ -1,0 +1,17 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "PullSummary\n{\n    results:\n    vec![PullRepoOutcome\n    {\n        repo: \"ptr\".into(), matched_files: 3, mappings: 7, missing_sha256: 0,\n        error: None,\n        notice: Some(\"repo ptr: privacy ceiling below floor; querying at 16 bits\".into()),\n    }], matched_files: 3, mappings: 7,\n}"
+---
+{
+  "results": [
+    {
+      "repo": "ptr",
+      "matched_files": 3,
+      "mappings": 7,
+      "missing_sha256": 0,
+      "notice": "repo ptr: privacy ceiling below floor; querying at 16 bits"
+    }
+  ],
+  "matched_files": 3,
+  "mappings": 7
+}

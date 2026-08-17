@@ -1,0 +1,9 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "ImportProgress { files: 10, total: 100, mappings: 55 }"
+---
+{
+  "files": 10,
+  "total": 100,
+  "mappings": 55
+}

@@ -1,0 +1,10 @@
+---
+source: crates/api/tests/wire_snapshots.rs
+expression: "RepoDto { name: \"ptr\".into(), url: \"http://127.0.0.1:9090\".into(), max_query_bits: Some(24), min_query_bits: Some(16), }"
+---
+{
+  "name": "ptr",
+  "url": "http://127.0.0.1:9090",
+  "max_query_bits": 24,
+  "min_query_bits": 16
+}
