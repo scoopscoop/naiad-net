@@ -93,22 +93,18 @@ gallery glyph; all chrome glyphs (window controls, search, gallery, settings,
 close) are a single hand-rolled monoline set — `ui/src/components/Icon.svelte`,
 with the logo in `Logo.svelte`.
 
-The title bar also carries an **activity dot** on the right. It reflects, in
-priority order, whether the daemon is unreachable, then any errored, warning, or
-still-running long operation (library scans, Hydrus imports), and goes quiet when
-nothing is happening. Click it (or press `Enter`/`Space` on it) to open a panel
-listing running and recently finished activities; `Escape` closes the panel and
-returns focus to the dot. Finished errors and warnings keep the dot lit for a few
-seconds, then decay to idle. Shorter waits — running a search, waiting on tag
-suggestions in the search field, loading or editing a file's tags, removing a
-watched folder — show a small inline spinner instead, and only if the operation
-actually takes long enough to notice. While tag suggestions load, the previous
-suggestion rows stay visible (dimmed) and clickable, and `Esc` dismisses the
-spinner along with the dropdown.
+An **activity dot** on the right of the title bar signals, in priority order:
+daemon unreachable → any errored / warning / running long op (scans, Hydrus
+imports) → idle. Click it (or `Enter`/`Space`) for a panel of running and recent
+activities; `Esc` closes it and returns focus to the dot. Finished errors and
+warnings linger a few seconds, then decay to idle. Shorter waits — a search, tag
+suggestions, loading/editing a file's tags, removing a root — show a small inline
+spinner instead, and only when slow enough to notice; while suggestions load the
+previous rows stay dimmed-but-clickable and `Esc` dismisses both spinner and
+dropdown.
 
-Typeahead is relation-aware: it offers one canonical suggestion per concept, with
-a count that merges the concept's aliases; typing an alias spelling surfaces its
-canonical tag (which is what gets inserted).
+Typeahead is relation-aware: one canonical suggestion per concept, with a count
+that merges its aliases; typing an alias surfaces (and inserts) the canonical tag.
 
 Single-click any tile → it becomes the **focused** file and the right **inspector**
 fills in:
@@ -117,16 +113,14 @@ fills in:
   tag and watch the dot color change),
 - the dashed `+ add tag…` field.
 
-Selection follows file-manager conventions. A plain click also **selects** that
-tile alone and drops the range **anchor** on it; `Shift`-click then selects the
-contiguous run from that anchor to the tile you clicked, and further
-`Shift`-clicks re-range from the *same* anchor rather than from the last one.
-`Ctrl`-click toggles individual tiles (and moves the anchor), arrow keys move
-the focus *and* the anchor (so a shift-click ranges from where you navigated
-to, Explorer-style), and dragging on
-empty space rubber-bands a region — hold `Ctrl` to add to what is already
-selected. A single-tile selection still opens against the whole gallery; only a
-multi-file selection narrows the detail tab's next/prev sequence to that subset.
+Selection follows file-manager conventions. A plain click selects that tile alone
+and drops the range **anchor** on it; `Shift`-click selects the contiguous run
+from that anchor (further `Shift`-clicks re-range from the *same* anchor, not the
+last click). `Ctrl`-click toggles individual tiles and moves the anchor; arrow
+keys move focus *and* anchor (Explorer-style); dragging empty space rubber-bands a
+region — hold `Ctrl` to add to the current selection. A single-tile selection
+opens against the whole gallery; only a multi-file selection narrows the detail
+tab's next/prev sequence to that subset.
 
 Double-click a tile (or press `Enter`, or hit the inspector's `Open ⤢`) → the full
 **detail tab** opens: the image fills the pane and tags/identity move into a
@@ -136,10 +130,12 @@ When more tabs are open than the titlebar can show, the strip gains scroll
 arrows, wheel/trackpad scrolling, and an all-tabs menu for jumping to (or
 closing) any tab directly; activating a tab always scrolls it into view.
 
-Tags with relations show a small `⇆` glyph; clicking it (or the `Relations…`
-context-menu row) opens a popover listing what the tag is shown as, its
-aliases, what it implies, and what implies it — click any related tag to
-search for it.
+**Right-click any tag chip** (or `Shift+F10` / the Menu key on a focused chip)
+for its menu: **Search with tag**, **Copy tag**, **Relations…**, **Remove**, plus
+**Hide from repo ⊘** on pulled tags. Tags with relations also show a small `⇆`
+glyph; **left-click it** (or the `Relations…` row) to open a popover listing what
+the tag is shown as, its aliases, what it implies, and what implies it — click any
+related tag to search for it.
 
 ### Frontend dev — hot reload
 
@@ -515,19 +511,16 @@ fails to start turns that page into an error state with the message, the last 20
 lines of daemon output, and **Copy details** / **Quit** buttons; the app no longer
 puts up a blocking native dialog and exits.
 
-The shell also remembers where you left it. Its size and position land in
-`window-state.json`, and whether the inspector is collapsed lands in
-`view-state.json` — both in the app config directory
+The shell remembers where you left it: window size/position in `window-state.json`,
+inspector-collapsed state in `view-state.json` — both in the app config dir
 (`%APPDATA%\app.naiad.desktop\` on Windows), separate from the daemon's
-`naiad.toml`. The window is created hidden and shown once the saved bounds are
-applied, so it never flashes at the default 1200×800 first. Bounds that no longer
-make sense — smaller than the enforced 700×500 minimum, or on a monitor you have
-since unplugged, leaving no grabbable strip of title bar on any display — are
-discarded and the window is centred instead. Persistence is best-effort: a state
-file that cannot be read or written logs to stderr and never blocks startup, and
-deleting either file restores the defaults. In a browser or under `vite dev` the
-inspector preference falls back to `localStorage`, so the UI still works
-standalone.
+`naiad.toml`. The window is created hidden and shown once saved bounds apply, so it
+never flashes at the default 1200×800 first. Bounds that no longer make sense
+(below the 700×500 minimum, or on an unplugged monitor with no grabbable title-bar
+strip left) are discarded and the window is centred. Persistence is best-effort —
+an unreadable/unwritable state file logs to stderr, never blocks startup, and
+deleting either file restores defaults. Under a browser or `vite dev` the inspector
+preference falls back to `localStorage`.
 
 Point it at an existing library during dev:
 

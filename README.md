@@ -26,6 +26,66 @@ match your library.
 
 ---
 
+## Quick Start
+
+1. **Download** the portable zip from
+   [releases/latest](https://github.com/scoopscoop/naiad-net/releases/latest).
+2. **Unzip** anywhere and double-click **`naiad-desktop.exe`**. (Windows 10/11 — WebView2
+   is already there; the daemon starts itself.)
+3. **Add a folder** — open **Settings** (the sliders glyph, top bar) → **Library** →
+   **Scan**, and pick a folder of images. Naiad hashes, indexes, and thumbnails them, then
+   keeps watching that folder for changes on its own.
+4. **Select files** — click a tile, then `Shift`-click another to grab the whole range
+   (`Ctrl`-click toggles individual tiles, `Ctrl+A` selects all).
+5. **Right-click → Pull tags** — Naiad fetches community tags for exactly those files. Done.
+
+No account, no upload — nothing leaves your machine but a blurred, k-anonymous request for
+tag *buckets* (the server never learns which files you own).
+
+---
+
+## Searching & filtering
+
+The search bar above the gallery — and `naiad search` on the CLI — speak the same small
+query language, and results filter as you type. Tags are `namespace:subtag`
+(`character:samus`, `series:metroid`, `creator:…`, `meta:…`, `rating:…`); the part before
+the `:` groups and colour-codes them.
+
+| Type this | You get |
+|-----------|---------|
+| `character:samus` | files with that tag |
+| `character:samus series:metroid` | **both** — terms are AND'd |
+| `samus or ridley` | **either** (`or` is a bareword, not a flag) |
+| `-meta:wip` | **exclude** a tag (leading `-`) |
+| `character:sam*` | wildcard on the subtag — also `*samus`, `sam*us` |
+| `character:*` | any file *with* a character tag; `-rating:*` any *without* a rating |
+| `character:"zero mission"` | quote a tag that contains spaces |
+| `=character:samus_aran` | **literal** — don't expand aliases/implications for this term |
+| `system:size>2mb` | filter on the file itself, not its tags |
+
+**`system:` predicates** filter intrinsic metadata:
+`system:width>=1920`, `system:height>=1080`, `system:duration>30s`,
+`system:type=image/png`, `system:origin=wd14-tagger` (tags from a given tool) or
+`system:origin=manual` (only hand-applied tags).
+
+**Handy tricks:**
+
+- **Wildcards** work on the subtag: `sam*`, `*samus`, `sam*us`, and `namespace:*` for a
+  whole namespace.
+- **Siblings & parents.** A *sibling* collapses an alias to a canonical tag (`samus` →
+  `character:samus`); a *parent* makes one tag imply another (`character:samus` ⇒
+  `series:metroid`). Search either spelling and both match — no need to remember the exact
+  tag. Add `--raw` (CLI) or flip **local tags only** (Settings → Display) to see the
+  literally-stored tags with no expansion, or `--local-only` to ignore pulled repos.
+- **Compose the modifiers:** `-=meta:wip` excludes *only* the literal tag.
+- **Quote** anything containing `*`, `>`, `<`, or `"` on the CLI so your shell doesn't eat
+  it. Note: `system:` and wildcard terms are standalone — they can't join an `or` group.
+- Sort the result set by import date, file date, name, size, or type.
+
+`naiad help search` prints this same cheat sheet in the terminal.
+
+---
+
 ## Get the desktop app
 
 Naiad ships a portable desktop app that bundles the daemon — no separate server process to
@@ -80,30 +140,22 @@ console that relays the daemon's output for the app's lifetime. Set `RUST_LOG` (
 
 ---
 
-## Quick Start
-
-### 1. Open the app and add a folder
-
-Launch `naiad-desktop.exe`. The gallery opens in a native window. Point Naiad at a folder
-of media files — it hashes and indexes them, generates thumbnails, and fills the gallery.
-From then on, any file you add, change, or delete inside that folder is picked up
-automatically; no manual rescans.
+## The gallery
 
 The gallery is a **three-pane workbench**: a left nav rail (saved searches + namespaces),
-a center grid with inline search, and a right inspector. Click a file to preview it;
-double-click (or `Enter`) for the full detail view with a resizable tag drawer. Multi-select
-with ctrl+click, shift+click, or drag a selection box. Ctrl+A selects all; Esc clears.
+a center grid with inline search, and a right inspector. Click a file to preview it in the
+inspector; double-click (or `Enter`) for the full detail view with a resizable tag drawer.
+Multi-select with `Ctrl`-click, `Shift`-click, or by dragging a selection box; `Ctrl+A`
+selects all, `Esc` clears. Tag files from the inspector or the detail view — your tags are
+private by default and never leave your machine.
 
-### 2. Browse, search, and tag
+> **Tip — tag chips are interactive.** **Right-click** any tag chip (in the inspector or
+> the detail view) for a menu: **Search with tag**, **Copy tag**, **Relations…**,
+> **Remove**, plus **Hide from repo** on pulled tags. Tags that have relations also carry a
+> small `⇆` glyph — **left-click** it to pop up what the tag is aliased to, what it implies,
+> and what implies it, and click any tag in that popover to search for it.
 
-Search-as-you-type across tags, namespaces, and system predicates. Wildcards, boolean
-logic, and quoted phrases all work (`character:samus*`, `-series:metroid`,
-`"zero mission"`). Sort the result set by import date, file date, name, size, or type.
-
-Tag files from the detail view. Your tags are private by default and never leave your
-machine.
-
-### 3. Community tags — included out of the box
+### Community tags — included out of the box
 
 A fresh install comes **preconfigured with `naiad-net`**
 (`https://v2202608398476500144.ultrasrv.de`) — the project's community tag repository.
