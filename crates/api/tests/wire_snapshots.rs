@@ -191,6 +191,8 @@ fn repo_and_submit_dtos() {
             url: "http://127.0.0.1:9090".into(),
             max_query_bits: None,
             min_query_bits: None,
+            advertised_bits: None,
+            count: None,
         }
     );
     // Both bounds populated (#179): ceiling and floor known.
@@ -201,6 +203,8 @@ fn repo_and_submit_dtos() {
             url: "http://127.0.0.1:9090".into(),
             max_query_bits: Some(24),
             min_query_bits: Some(16),
+            advertised_bits: None,
+            count: None,
         }
     );
     assert_json_snapshot!("repo_pull_req", RepoPullReq { name: "ptr".into() });

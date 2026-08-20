@@ -484,6 +484,7 @@ fn spawn_caps_injecting_repo(
                     streaming: false,
                     min_query_bits: None,
                     store_generation: None,
+                    count: None,
                     name: None,
                 })
             };
@@ -782,6 +783,7 @@ fn spawn_caps_injecting_repo_with_hint(
                     streaming: false,
                     min_query_bits: None,
                     store_generation: None,
+                    count: None,
                     name: None,
                 })
             };
@@ -860,6 +862,7 @@ fn spawn_dual_domain_repo(
                     streaming: false,
                     min_query_bits: None,
                     store_generation: None,
+                    count: None,
                     name: None,
                 })
             };
@@ -1236,6 +1239,7 @@ fn spawn_floored_dual_domain_repo(advertised_bits: u32, floor: u32) -> FlooredDu
                     streaming: false,
                     min_query_bits: Some(floor),
                     store_generation: None,
+                    count: None,
                     name: None,
                 })
             };
@@ -1646,6 +1650,7 @@ fn spawn_capped_hint_repo(
                     streaming: false,
                     min_query_bits: None,
                     store_generation: None,
+                    count: None,
                     name: None,
                 })
             };

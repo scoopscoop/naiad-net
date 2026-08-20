@@ -109,6 +109,17 @@ pub struct RepoDto {
     /// repo enforces no floor).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min_query_bits: Option<u32>,
+    /// This repo's advertised bucket width (prefix bits) from its cached caps —
+    /// `Some` once handshaken this session and serving in bucketed mode, else
+    /// `None`. The UI shows the EFFECTIVE width `min(advertised, ceiling)`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub advertised_bits: Option<u32>,
+    /// This repo's distinct-hash count from its cached caps. `Some` once
+    /// handshaken this session against a count-advertising server. Drives the
+    /// crowd↔bits conversion and the download estimate; `None` → the UI shows a
+    /// bits-only control with no size estimate.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub count: Option<u64>,
 }
 
 /// Request body for `POST /api/repos`. `name` is an optional fallback used
@@ -501,6 +512,7 @@ pub const API_RELATIONS_PULL: &str = "/api/relations/pull";
 pub const API_RELATIONS: &str = "/api/relations";
 pub const API_RELATIONS_STATUS: &str = "/api/relations/status";
 pub const API_REPOS_PRIORITY: &str = "/api/repos/priority";
+pub const API_REPOS_QUERY_BITS: &str = "/api/repos/query-bits";
 pub const API_FILES_PULL_TAGS: &str = "/api/files/pull-tags";
 pub const API_FILES_PULL_TAGS_STREAM: &str = "/api/files/pull-tags/stream";
 pub const API_ACCOUNT: &str = "/api/account";
@@ -515,6 +527,15 @@ pub const API_VIEW_SORT: &str = "/api/view/sort";
 pub struct RepoPriorityReq {
     pub name: String,
     pub priority: i64,
+}
+
+/// Request body for `POST /api/repos/query-bits`. `max_query_bits: None`
+/// clears the per-repo override so the repo falls back to the global ceiling.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RepoQueryBitsReq {
+    pub name: String,
+    #[serde(default)]
+    pub max_query_bits: Option<u32>,
 }
 
 /// A block rule: `GET /api/blocks` list item. `kind` is `"tag"`,
@@ -722,6 +743,8 @@ mod tests {
             url: "http://127.0.0.1:9090".into(),
             max_query_bits: None,
             min_query_bits: None,
+            advertised_bits: None,
+            count: None,
         };
         let back: RepoDto = serde_json::from_str(&serde_json::to_string(&r).unwrap()).unwrap();
         assert_eq!(r, back);

@@ -100,6 +100,16 @@ impl CapsCache {
         self.fetch_count.load(Ordering::Relaxed)
     }
 
+    /// Seed the cache with pre-built caps, bypassing a network fetch.
+    ///
+    /// Test-only: lets integration tests plant known caps (e.g. a specific
+    /// `PullMode::Bucketed { prefix_bits }` and `count`) without starting a real
+    /// repo server. Production code always uses `get_or_fetch`.
+    #[cfg(test)]
+    pub fn seed(&self, service_id: i64, caps: Caps) {
+        self.inner.lock().unwrap().insert(service_id, caps);
+    }
+
     /// Drain the first pending notice for `service_id` (#179). Returns `None`
     /// when the queue is empty (the common case) or no clamp-up has been noted
     /// for this service yet this session.
@@ -4386,6 +4396,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         }
     }
@@ -4411,6 +4422,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         }
     }
@@ -4700,6 +4712,7 @@ mod tests {
             streaming: false,
             min_query_bits: Some(floor),
             store_generation: None,
+            count: None,
             name: None,
         }
     }

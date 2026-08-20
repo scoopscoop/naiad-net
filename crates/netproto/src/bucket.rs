@@ -228,6 +228,14 @@ pub struct Caps {
     /// byte-identical caps — no wire-version bump.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub min_query_bits: Option<u32>,
+    /// This repo's total distinct-hash count, used by a client purely to
+    /// translate a desired k-anonymity crowd into a bucket width and to
+    /// estimate download volume. Advisory only — never a contract. Absent on
+    /// pre-count servers → `None`; the client then falls back to a bits-only
+    /// control with no size estimate. Omitted on the wire when `None`, so a
+    /// pre-count server emits byte-identical caps — no wire-version bump.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub count: Option<u64>,
     /// Opaque store-generation id. Changes whenever the mirror is rebuilt from
     /// scratch (`bridge seed --rebuild`), so a client can detect a reshuffled seq
     /// space and re-pull from zero instead of resuming a stale cursor. Absent on
@@ -645,6 +653,7 @@ mod tests {
                 streaming: false,
                 min_query_bits: None,
                 store_generation: None,
+                count: None,
                 name: None,
             };
             let back: Caps = serde_json::from_str(&serde_json::to_string(&caps).unwrap()).unwrap();
@@ -683,6 +692,7 @@ mod tests {
                 streaming: false,
                 min_query_bits: None,
                 store_generation: None,
+                count: None,
                 name: None,
             })
             .unwrap(),
@@ -711,6 +721,7 @@ mod tests {
                 streaming: false,
                 min_query_bits: None,
                 store_generation: None,
+                count: None,
                 name: None,
             })
             .unwrap(),
@@ -746,6 +757,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         };
         let back: Caps = serde_json::from_str(&serde_json::to_string(&caps).unwrap()).unwrap();
@@ -779,6 +791,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         };
         let back: Caps = serde_json::from_str(&serde_json::to_string(&caps).unwrap()).unwrap();
@@ -806,6 +819,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         };
         assert!(!serde_json::to_string(&caps).unwrap().contains("repo_key"));
@@ -932,6 +946,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         };
         let json = serde_json::to_string(&caps).unwrap();
@@ -965,6 +980,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         };
         let json = serde_json::to_string(&caps).unwrap();
@@ -1031,6 +1047,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         };
         assert!(
@@ -1086,6 +1103,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         };
         assert!(dual.serves(HashDomain::Blake3));
@@ -1254,6 +1272,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         }
     }
@@ -1369,6 +1388,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         };
         // sha256 served, not incremental -> snapshot-backed
@@ -1437,6 +1457,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         };
         let json = serde_json::to_string(&caps).unwrap();
@@ -1514,6 +1535,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         };
         let json = serde_json::to_string(&caps).unwrap();
@@ -1546,6 +1568,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         };
         // streaming: false → absent on the wire.
@@ -1623,6 +1646,7 @@ mod tests {
             streaming: true,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         };
         let json = serde_json::to_string(&caps).unwrap();
@@ -1652,6 +1676,7 @@ mod tests {
             streaming: true,
             min_query_bits: Some(16),
             store_generation: None,
+            count: None,
             name: None,
         };
         let json = serde_json::to_string(&caps).unwrap();
@@ -1812,6 +1837,20 @@ mod tests {
         assert!(json.starts_with(r#"{"err":"#), "err key: {json}");
         let back: StreamTrailer = serde_json::from_str(&json).unwrap();
         assert_eq!(back, t);
+    }
+
+    #[test]
+    fn caps_count_is_additive_and_backcompat() {
+        let json = r#"{"version":7,"mode":"bucketed","prefix_bits":18}"#;
+        let caps: Caps = serde_json::from_str(json).expect("deserialize old caps");
+        assert_eq!(caps.count, None);
+        let out = serde_json::to_string(&caps).unwrap();
+        assert!(!out.contains("count"), "None count must be skipped: {out}");
+        let with = Caps { count: Some(94_317), ..caps };
+        let s = serde_json::to_string(&with).unwrap();
+        assert!(s.contains("\"count\":94317"), "serialized: {s}");
+        let back: Caps = serde_json::from_str(&s).unwrap();
+        assert_eq!(back.count, Some(94_317));
     }
 
     /// The three trailer variants are structurally distinct: `done` is a boolean,

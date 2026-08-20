@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Naiad",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "identifier": "app.naiad.desktop",
   "build": {
     "frontendDist": "../dist",

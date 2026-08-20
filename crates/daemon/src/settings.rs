@@ -72,6 +72,10 @@ const SCAFFOLD: &str = "\
 # download, and — at the extreme — a repo could pin your query to individual file
 # hashes (256 bits = your exact library). Only raise this if you accept that
 # correlation risk (e.g. you pull over a VPN or Tor). Default: 24.
+# This per-repo ceiling is also editable in the desktop app under Settings →
+# Sync as a \"cover crowd\" (how many other files hide each hash you pull) — a
+# bigger crowd means more privacy but more download; dropping below ~1,000
+# cover files requires an explicit \"naked pulls\" opt-in.
 # max_query_bits = 24
 
 # Subscribed tag repositories — the source of truth at daemon start.

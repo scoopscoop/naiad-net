@@ -26,9 +26,9 @@ use naiad_api::{
     RejectRequest, RejectResponse, RejectionDto, RelationEdgeDto, RelationPullReq,
     RelationPullSummary, RelationSectionDto, RelationStatusDto, RelationSubmitReq, RelationTagDto,
     RelationsImportSummary, RelationsProgress, RepoAddReq, RepoDto, RepoPriorityReq, RepoPullReq,
-    RepoPullSummary, ReportRequest, ScanError, ScanProgress, ScanReq, ScanSummary, SiblingDto,
-    SiblingRemoveReq, SourceImportReq, SourceImportSummary, SubmitReq, TagDetailDto,
-    TagRelationsDto, TaggerLookupItem, TaggerLookupReq, TagsReq,
+    RepoPullSummary, RepoQueryBitsReq, ReportRequest, ScanError, ScanProgress, ScanReq,
+    ScanSummary, SiblingDto, SiblingRemoveReq, SourceImportReq, SourceImportSummary, SubmitReq,
+    TagDetailDto, TagRelationsDto, TaggerLookupItem, TaggerLookupReq, TagsReq,
 };
 use naiad_core::Hash;
 use naiad_db::{Db, FileListing};
@@ -106,6 +106,10 @@ pub fn app(state: AppState) -> Router {
         )
         .route(naiad_api::API_REPOS_SUBMIT, post(repos_submit_handler))
         .route(naiad_api::API_REPOS_PRIORITY, post(repos_priority_handler))
+        .route(
+            naiad_api::API_REPOS_QUERY_BITS,
+            post(repos_query_bits_handler),
+        )
         .route(
             naiad_api::API_RELATIONS_SUBMIT,
             post(relations_submit_handler),
@@ -1101,16 +1105,26 @@ async fn roots_remove_handler(
 }
 
 /// Snapshot the current subscribed-repo list as `RepoEntry` values ready for
-/// `SettingsStore::set_repos`. Called inside the DB lock in both handlers so
-/// the toml always reflects exactly what the DB contains at that moment.
-fn current_repo_entries(db: &Db) -> anyhow::Result<Vec<crate::settings::RepoEntry>> {
+/// `SettingsStore::set_repos`. DB rows are the source of truth for membership
+/// (name/url); the per-repo `max_query_bits` override lives ONLY in `naiad.toml`,
+/// so it is carried over here by name — otherwise every add/remove would wipe it.
+fn current_repo_entries(
+    db: &Db,
+    prev: &[crate::settings::RepoEntry],
+) -> anyhow::Result<Vec<crate::settings::RepoEntry>> {
     Ok(db
         .list_shared_services()?
         .into_iter()
-        .map(|s| crate::settings::RepoEntry {
-            name: s.name,
-            url: s.url,
-            max_query_bits: None,
+        .map(|s| {
+            let max_query_bits = prev
+                .iter()
+                .find(|r| r.name == s.name)
+                .and_then(|r| r.max_query_bits);
+            crate::settings::RepoEntry {
+                name: s.name,
+                url: s.url,
+                max_query_bits,
+            }
         })
         .collect())
 }
@@ -1122,14 +1136,22 @@ async fn repos_list_handler(State(state): State<AppState>) -> Result<Json<Vec<Re
         Ok(ops::list_repos(db)?
             .into_iter()
             .map(|s| {
-                // §7.1 / #179: populate both bounds from session-cached data —
-                // no network call in a list endpoint.
-                let min_qb = caps_cache.peek(s.id).and_then(|c| c.min_query_bits);
+                // §7.1 / #179: populate all caps-derived fields from session-cached
+                // data — no network call in a list endpoint.
+                let cached = caps_cache.peek(s.id);
+                let min_qb = cached.as_ref().and_then(|c| c.min_query_bits);
+                let advertised_bits = cached.as_ref().and_then(|c| match c.mode {
+                    naiad_netproto::PullMode::Bucketed { prefix_bits } => Some(prefix_bits),
+                    naiad_netproto::PullMode::WholeRepo => None,
+                });
+                let count = cached.as_ref().and_then(|c| c.count);
                 RepoDto {
                     name: s.name,
                     url: s.url,
                     max_query_bits: None, // populated below, after the lock
                     min_query_bits: min_qb,
+                    advertised_bits,
+                    count,
                 }
             })
             .collect::<Vec<_>>())
@@ -1259,7 +1281,8 @@ async fn repos_add_handler(
             // and the toml section are updated atomically from the caller's
             // perspective. This is acceptable because subscribe is rare and
             // the toml write is small local IO (no network, no large file).
-            if let Err(toml_err) = settings.set_repos(&current_repo_entries(db)?) {
+            let prev = settings.settings().repos.unwrap_or_default();
+            if let Err(toml_err) = settings.set_repos(&current_repo_entries(db, &prev)?) {
                 // Roll back: a brand-new row is dropped (it has no tags yet);
                 // a re-attached one goes back to detached. If that also fails,
                 // log both errors so neither is swallowed.
@@ -1287,6 +1310,8 @@ async fn repos_add_handler(
         url: echo_url,
         max_query_bits: None,
         min_query_bits: None,
+        advertised_bits: None,
+        count: None,
     }))
 }
 
@@ -1370,7 +1395,8 @@ async fn repos_remove_handler(
             // The toml write is intentionally inside the DB lock so the DB
             // state and toml are updated atomically. This is acceptable because
             // unsubscribe is rare and the toml write is small local IO.
-            if let Err(toml_err) = settings.set_repos(&current_repo_entries(db)?) {
+            let prev = settings.settings().repos.unwrap_or_default();
+            if let Err(toml_err) = settings.set_repos(&current_repo_entries(db, &prev)?) {
                 // Re-attach so DB and toml stay in sync; if that also fails,
                 // log both errors so neither is swallowed before we bail.
                 match db.set_service_url(svc.id, &svc.url) {
@@ -1413,6 +1439,51 @@ async fn repos_priority_handler(
     })
     .await?;
     Ok(StatusCode::OK)
+}
+
+/// `POST /api/repos/query-bits` — set (or clear, with `null`) the per-repo
+/// privacy ceiling `max_query_bits`. Persisted to `naiad.toml`; applied on the
+/// next pull via `repo_max_query_bits` (mtime-gated settings cache).
+async fn repos_query_bits_handler(
+    State(state): State<AppState>,
+    Json(req): Json<RepoQueryBitsReq>,
+) -> Result<StatusCode, ApiError> {
+    if let Some(bits) = req.max_query_bits {
+        if !(1..=256).contains(&bits) {
+            return Err(bad("max_query_bits must be in [1, 256]"));
+        }
+    }
+    let settings = state
+        .settings
+        .as_ref()
+        .ok_or_else(|| bad("settings store unavailable"))?
+        .clone();
+    let name = req.name.clone();
+    let bits = req.max_query_bits;
+    let found = on_db(&state, move |db| {
+        let Some(_) = db.shared_service_by_name(&name)? else {
+            return Ok(false);
+        };
+        let prev = settings.settings().repos.unwrap_or_default();
+        let mut entries = current_repo_entries(db, &prev)?;
+        // The service exists in the DB, so it must appear in entries.
+        if let Some(e) = entries.iter_mut().find(|r| r.name == name) {
+            e.max_query_bits = bits;
+        }
+        settings
+            .set_repos(&entries)
+            .map_err(|e| anyhow::anyhow!("persisting naiad.toml failed: {e:#}"))?;
+        Ok(true)
+    })
+    .await?;
+    if found {
+        Ok(StatusCode::OK)
+    } else {
+        Err(ApiError(
+            StatusCode::NOT_FOUND,
+            format!("no such repo: {}", req.name),
+        ))
+    }
 }
 
 /// Resolve the privacy ceiling for one repo: the `[[repos]]` per-repo
@@ -4436,5 +4507,259 @@ mod tests {
              got {}",
             stages[3].tags
         );
+    }
+}
+
+#[cfg(test)]
+mod repo_entries_tests {
+    use super::current_repo_entries;
+
+    #[test]
+    fn repo_override_survives_reconcile() {
+        let db_dir = tempfile::tempdir().unwrap();
+        let db_path = db_dir.path().join("test.db");
+        let db = naiad_db::Db::open(&db_path).unwrap();
+        db.subscribe_shared_service("a", "http://a", None).unwrap();
+        db.subscribe_shared_service("b", "http://b", None).unwrap();
+
+        let prev = vec![
+            crate::settings::RepoEntry {
+                name: "a".into(),
+                url: "http://a".into(),
+                max_query_bits: Some(14),
+            },
+            crate::settings::RepoEntry {
+                name: "b".into(),
+                url: "http://b".into(),
+                max_query_bits: None,
+            },
+        ];
+
+        let entries = current_repo_entries(&db, &prev).unwrap();
+        assert_eq!(
+            entries
+                .iter()
+                .find(|r| r.name == "a")
+                .unwrap()
+                .max_query_bits,
+            Some(14),
+            "override for repo 'a' must survive reconcile"
+        );
+        assert_eq!(
+            entries
+                .iter()
+                .find(|r| r.name == "b")
+                .unwrap()
+                .max_query_bits,
+            None,
+            "repo 'b' has no override, must remain None"
+        );
+    }
+}
+
+#[cfg(test)]
+mod query_bits_tests {
+    use super::{repo_max_query_bits, repos_query_bits_handler};
+    use axum::Json;
+    use axum::extract::State;
+    use axum::http::StatusCode;
+    use naiad_api::RepoQueryBitsReq;
+
+    fn test_store(dir: &tempfile::TempDir) -> crate::thumb_store::ThumbStore {
+        crate::thumb_store::ThumbStore::open(&dir.path().join("thumbs.db")).unwrap()
+    }
+
+    #[tokio::test]
+    async fn set_query_bits_persists_and_clears() {
+        let db_dir = tempfile::tempdir().unwrap();
+        let db_path = db_dir.path().join("test.db");
+        let thumbs = tempfile::tempdir().unwrap();
+        let db = naiad_db::Db::open(&db_path).unwrap();
+        db.subscribe_shared_service("a", "http://a", None).unwrap();
+
+        let toml_path = db_dir.path().join("naiad.toml");
+        let state = crate::AppState::new(db, test_store(&thumbs), 64).with_settings_path(toml_path);
+
+        // Set max_query_bits = 14 → should persist.
+        let res = repos_query_bits_handler(
+            State(state.clone()),
+            Json(RepoQueryBitsReq {
+                name: "a".into(),
+                max_query_bits: Some(14),
+            }),
+        )
+        .await;
+        assert!(res.is_ok(), "set to 14 must succeed");
+        assert_eq!(
+            repo_max_query_bits(&state, "a"),
+            14,
+            "max_query_bits should be 14 after set"
+        );
+
+        // Clear override (None) → falls back to global default (24).
+        let res = repos_query_bits_handler(
+            State(state.clone()),
+            Json(RepoQueryBitsReq {
+                name: "a".into(),
+                max_query_bits: None,
+            }),
+        )
+        .await;
+        assert!(res.is_ok(), "clear must succeed");
+        assert_eq!(
+            repo_max_query_bits(&state, "a"),
+            24,
+            "max_query_bits should fall back to global default (24) after clear"
+        );
+
+        // Unknown repo → 404.
+        let err = repos_query_bits_handler(
+            State(state.clone()),
+            Json(RepoQueryBitsReq {
+                name: "unknown".into(),
+                max_query_bits: Some(14),
+            }),
+        )
+        .await
+        .expect_err("unknown repo must fail");
+        assert_eq!(err.0, StatusCode::NOT_FOUND, "unknown repo must return 404");
+
+        // Out-of-range value (300) → 400.
+        let err = repos_query_bits_handler(
+            State(state.clone()),
+            Json(RepoQueryBitsReq {
+                name: "a".into(),
+                max_query_bits: Some(300),
+            }),
+        )
+        .await
+        .expect_err("out-of-range must fail");
+        assert_eq!(
+            err.0,
+            StatusCode::BAD_REQUEST,
+            "out-of-range must return 400"
+        );
+
+        drop(db_dir);
+    }
+
+    /// Setting one repo's ceiling must not clobber another repo's existing
+    /// override — `current_repo_entries` must carry all overrides through.
+    #[tokio::test]
+    async fn set_query_bits_preserves_other_repo_override() {
+        let db_dir = tempfile::tempdir().unwrap();
+        let db_path = db_dir.path().join("test.db");
+        let thumbs = tempfile::tempdir().unwrap();
+        let db = naiad_db::Db::open(&db_path).unwrap();
+        db.subscribe_shared_service("a", "http://a", None).unwrap();
+        db.subscribe_shared_service("b", "http://b", None).unwrap();
+
+        let toml_path = db_dir.path().join("naiad.toml");
+        let state = crate::AppState::new(db, test_store(&thumbs), 64).with_settings_path(toml_path);
+
+        // Set B's override to 12 first.
+        let res = repos_query_bits_handler(
+            State(state.clone()),
+            Json(RepoQueryBitsReq {
+                name: "b".into(),
+                max_query_bits: Some(12),
+            }),
+        )
+        .await;
+        assert!(res.is_ok(), "set B to 12 must succeed");
+
+        // Now set A's override to 20 — must not disturb B.
+        let res = repos_query_bits_handler(
+            State(state.clone()),
+            Json(RepoQueryBitsReq {
+                name: "a".into(),
+                max_query_bits: Some(20),
+            }),
+        )
+        .await;
+        assert!(res.is_ok(), "set A to 20 must succeed");
+
+        assert_eq!(
+            repo_max_query_bits(&state, "b"),
+            12,
+            "B's override must survive after A is set"
+        );
+        assert_eq!(
+            repo_max_query_bits(&state, "a"),
+            20,
+            "A's override must be 20"
+        );
+
+        drop(db_dir);
+    }
+}
+
+#[cfg(test)]
+mod repos_list_tests {
+    use super::repos_list_handler;
+    use axum::Json;
+    use axum::extract::State;
+
+    fn test_store(dir: &tempfile::TempDir) -> crate::thumb_store::ThumbStore {
+        crate::thumb_store::ThumbStore::open(&dir.path().join("thumbs.db")).unwrap()
+    }
+
+    /// Verify that `repos_list_handler` populates `advertised_bits` and `count`
+    /// from the session-cached caps (#bucket-crowd-control task 4).
+    #[tokio::test]
+    async fn repos_list_advertises_bits_and_count() {
+        use std::collections::BTreeMap;
+
+        let db_dir = tempfile::tempdir().unwrap();
+        let db_path = db_dir.path().join("test.db");
+        let thumbs = tempfile::tempdir().unwrap();
+        let db = naiad_db::Db::open(&db_path).unwrap();
+
+        // Subscribe one repo and capture its service id.
+        let svc_id = db.subscribe_shared_service("a", "http://a", None).unwrap();
+
+        let state = crate::AppState::new(db, test_store(&thumbs), 64);
+
+        // Seed the caps cache — bucketed mode, 18 bits, 94 317 hashes.
+        let caps = naiad_netproto::Caps {
+            version: naiad_netproto::PROTOCOL_VERSION,
+            mode: naiad_netproto::PullMode::Bucketed { prefix_bits: 18 },
+            relation_incremental: false,
+            mapping_incremental: false,
+            reports: false,
+            repo_key: None,
+            hash_domain: naiad_netproto::HashDomain::Blake3,
+            hash_domains: vec![],
+            incremental_domains: None,
+            server_version: None,
+            serve_hint: BTreeMap::new(),
+            streaming: false,
+            min_query_bits: None,
+            count: Some(94_317),
+            store_generation: None,
+            name: None,
+        };
+        state.caps_cache.seed(svc_id, caps);
+
+        let Json(repos) = repos_list_handler(State(state))
+            .await
+            .ok()
+            .expect("repos_list_handler must succeed");
+        let a = repos
+            .iter()
+            .find(|r| r.name == "a")
+            .expect("repo 'a' must appear in the list");
+        assert_eq!(
+            a.advertised_bits,
+            Some(18),
+            "advertised_bits must come from the cached caps prefix_bits"
+        );
+        assert_eq!(
+            a.count,
+            Some(94_317),
+            "count must come from the cached caps count field"
+        );
+
+        drop(db_dir);
     }
 }

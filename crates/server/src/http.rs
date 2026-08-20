@@ -670,18 +670,21 @@ async fn caps_handler(
             None
         };
     // Read the persisted distinct-hash count and store_generation in a single
-    // reader checkout — one round-robin advance, one mutex lock/unlock. Falls
-    // back to CAPS_FALLBACK_COUNT when no row exists yet (pre-upgrade stores
-    // get a one-shot compute on first startup).
-    let (count, store_generation) = {
+    // reader checkout — one round-robin advance, one mutex lock/unlock.
+    // count_opt: the real persisted count, or None when no row exists yet or
+    // on error (we advertise None so the client does not display a crowd
+    // number that was never measured).
+    // count: the u64 used ONLY for advise() and the mode-floor logic; falls
+    // back to CAPS_FALLBACK_COUNT so the mode decision is conservative.
+    let (count_opt, store_generation) = {
         let reader = st.reader();
         let guard = reader.lock_recover();
-        let count = match guard.read_distinct_hash_count() {
-            Ok(Some(n)) => n,
-            Ok(None) => CAPS_FALLBACK_COUNT,
+        let count_opt = match guard.read_distinct_hash_count() {
+            Ok(Some(n)) => Some(n),
+            Ok(None) => None,
             Err(e) => {
-                tracing::warn!(target: "repo", err = %e, "caps: read_distinct_hash_count failed; using fallback count");
-                CAPS_FALLBACK_COUNT
+                tracing::warn!(target: "repo", err = %e, "caps: read_distinct_hash_count failed; advertising None, using fallback for advise");
+                None
             }
         };
         // #194: fetch the store-generation id — brief synchronous lock,
@@ -690,8 +693,10 @@ async fn caps_handler(
             tracing::warn!(target: "repo", err = %e, "caps: failed to read store_generation; advertising None");
             None
         });
-        (count, store_generation)
+        (count_opt, store_generation)
     };
+    // Internal use only: advise() and the snapshot-floor lift need a u64.
+    let count = count_opt.unwrap_or(CAPS_FALLBACK_COUNT);
     let caps = Caps {
         version: PROTOCOL_VERSION,
         mode: match snapshot_bits {
@@ -749,6 +754,12 @@ async fn caps_handler(
         // domain, and the server enforces the floor only when a snapshot
         // backend exists (http.rs:855-881).
         min_query_bits: snapshot_floor,
+        // Advertise the distinct-hash count so clients can translate a
+        // desired k-anonymity crowd into a bucket width without guessing
+        // repo size. Advisory only — never a contract. None when no real
+        // count row exists yet (avoids overstating crowd during pre-compute
+        // window); the internal advise() still uses the fallback u64.
+        count: count_opt,
         // #194: absent (None) when the store has never been seeded or
         // predates this feature; clients fall back to the
         // backwards-cursor guard in that case.
@@ -4592,6 +4603,12 @@ mod tests {
             matches!(caps.mode, naiad_netproto::PullMode::Bucketed { .. }),
             "fallback count must put a large repo into Bucketed mode: {:?}",
             caps.mode
+        );
+        // No real count row → wire count must be None (avoid overstating crowd).
+        assert_eq!(
+            caps.count, None,
+            "empty store must advertise count: None, got {:?}",
+            caps.count
         );
     }
 

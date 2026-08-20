@@ -150,6 +150,17 @@ export async function addRepo(url: string): Promise<void> {
   );
 }
 
+/** Set (or clear, with null) a repo's per-repo privacy ceiling in prefix bits. */
+export async function setRepoQueryBits(name: string, maxQueryBits: number | null): Promise<void> {
+  await ensureOk(
+    await fetch('/api/repos/query-bits', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name, max_query_bits: maxQueryBits }),
+    }),
+  );
+}
+
 /** Unsubscribe. Pulled tags are KEPT unless `purge` is set. */
 export async function removeRepo(name: string, purge = false): Promise<void> {
   const url = `/api/repos?name=${encodeURIComponent(name)}${purge ? '&purge=true' : ''}`;

@@ -334,6 +334,16 @@ it cannot be resolved down to individual files. Future mitigations (decoy bucket
 noted in ADR 0001; cryptographic approaches (PSI/PIR) are deliberately out of scope as
 over-engineering for v1.
 
+#### Choosing a cover crowd
+
+You control how many other files hide each hash you look up — the "cover crowd." A larger crowd means
+more privacy (the repo sees less signal about your exact library) at the cost of downloading more tags
+for files you don't own; the desktop app shows an estimated per-lookup size as you adjust the slider.
+The default crowd of roughly 1,000 hashes is a practical balance for most users on an untrustworthy
+network. Dropping below ~1,000 cover files — where individual hash correlation becomes realistic —
+requires an explicit "naked pulls" opt-in, intended only for situations where the extra privacy is
+unnecessary (for example, pulling over a VPN or a fully trusted private repo).
+
 ### How trusted operators emerge from the community
 
 This is intentionally a social/reputation system, not a fixed hierarchy:
@@ -540,7 +550,7 @@ Rationale for these is recorded in Architecture Decision Records maintained in t
 
 ## 12. Status & Contributing
 
-**Pre-alpha — v0.3.2.** This document is the design spec (the *why*); Phases 0–2 are complete and
+**Pre-alpha — v0.3.3.** This document is the design spec (the *why*); Phases 0–2 are complete and
 Phases 3–5 are in progress — see the [Roadmap](#9-roadmap) for delivered vs remaining. Networking is
 implemented: signed submissions, accounts, k-anonymous bucket pulls, search/display, and delta
 sync all ship today; in v0.2.0 the federation model was replaced with a simple client/server

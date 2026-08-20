@@ -2,7 +2,9 @@
   import { onMount, tick } from 'svelte';
   import type { BackupSummary, ImportProgress, RelationsImportSummary, RelationsProgress, RepoDto, ScanSummary, SourceImportSummary } from '../lib/types';
   import { view, LEVEL_MIN, LEVEL_MAX } from '../lib/settings.svelte';
-  import { addRepo, backup, hydrusConfig, hydrusConfigure, hydrusRelationsStream, listRepos, removeRepo, sourceImport, sourceImportStream } from '../lib/api';
+  import { addRepo, backup, hydrusConfig, hydrusConfigure, hydrusRelationsStream, listRepos, removeRepo, setRepoQueryBits, sourceImport, sourceImportStream } from '../lib/api';
+  import { crowdForBits, effectiveBits, softCapBits, bytesPerLookup, formatBytes,
+           CROWD_FLOOR, SERVER_FLOOR_BITS, MAX_BITS } from '../lib/crowd';
   import { activity } from '../lib/activity.svelte';
   import FoldersSection from './FoldersSection.svelte';
   import TagCategoriesSection from './TagCategoriesSection.svelte';
@@ -252,6 +254,31 @@
     if (tab === 'sync') void refreshRepos();
   });
 
+  let nakedByRepo = $state<Record<string, boolean>>({});
+
+  // The app's default per-repo privacy ceiling (mirrors the daemon's global
+  // default). When a repo does not report its size (count == null) we cannot
+  // compute a crowd, so this same value is the safe cap for the bits-only
+  // fallback control — anything above it counts as a "naked" width.
+  const DEFAULT_CEILING = 24;
+  const FALLBACK_CAP = DEFAULT_CEILING;
+  function currentBits(repo: RepoDto): number { return repo.max_query_bits ?? DEFAULT_CEILING; }
+  function nakedFor(repo: RepoDto): boolean {
+    if (repo.name in nakedByRepo) return nakedByRepo[repo.name];
+    if (repo.count != null) {
+      return crowdForBits(repo.count, effectiveBits(repo.advertised_bits, currentBits(repo), repo.min_query_bits)) < CROWD_FLOOR;
+    }
+    return currentBits(repo) > FALLBACK_CAP;
+  }
+  async function saveBits(repo: RepoDto, bits: number) {
+    try {
+      await setRepoQueryBits(repo.name, bits);
+      await refreshRepos();
+    } catch (e) {
+      repoError = `failed to set query width for ${repo.name}: ${e}`;
+    }
+  }
+
   /** Svelte action: focuses the node immediately after it mounts.
    *  Used to move keyboard focus to the confirm button when the inline
    *  confirm row appears (replacing the remove button). */
@@ -437,12 +464,61 @@
             {#each repos as repo (repo.name)}
               <div class="row repo-row">
                 <span class="repo-id"><span class="repo-name">{repo.name}</span> <span class="repo-url">{repo.url}</span></span>
-                {#if repo.max_query_bits != null && repo.min_query_bits != null && repo.min_query_bits > repo.max_query_bits}
-                  <span class="repo-width repo-width-clamped">query width {repo.max_query_bits} → {repo.min_query_bits} bits (raised to repo minimum)</span>
-                {:else if repo.max_query_bits != null && repo.min_query_bits != null}
-                  <span class="repo-width">query width {repo.max_query_bits} bits (repo min {repo.min_query_bits})</span>
-                {:else if repo.max_query_bits != null}
-                  <span class="repo-width">query width ≤ {repo.max_query_bits} bits</span>
+                {#if repo.advertised_bits == null}
+                  <span class="repo-width">no bucketing yet — pulled whole, or awaiting first handshake</span>
+                {:else if repo.count == null}
+                  <div class="repo-crowd">
+                    <label class="repo-width">query width ≤
+                      <input type="range" min={SERVER_FLOOR_BITS} max={nakedFor(repo) ? MAX_BITS : FALLBACK_CAP}
+                        value={currentBits(repo)} onchange={(e) => saveBits(repo, +e.currentTarget.value)} />
+                      {currentBits(repo)} bits
+                    </label>
+                    <label class="naked-opt">
+                      <input type="checkbox" checked={nakedFor(repo)}
+                        onchange={(e) => {
+                          const on = e.currentTarget.checked;
+                          nakedByRepo[repo.name] = on;
+                          if (!on && currentBits(repo) > FALLBACK_CAP) { saveBits(repo, FALLBACK_CAP); }
+                        }} />
+                      allow naked pulls (near-exact hashes; VPN/trusted only)
+                    </label>
+                  </div>
+                {:else}
+                  {@const N = repo.count}
+                  {@const eff = effectiveBits(repo.advertised_bits, currentBits(repo), repo.min_query_bits)}
+                  {@const naked = nakedFor(repo)}
+                  <!-- The slider tracks the EFFECTIVE width (what actually sets the
+                       crowd), not the raw ceiling — so the handle and the readout
+                       always agree. floorBits: can't pull coarser than the server
+                       floor. hiNonNaked: finest width still ≥ CROWD_FLOOR that the
+                       repo serves. Inverted axis: dragging right = coarser = more
+                       cover crowd. Saving stores the chosen width as the ceiling. -->
+                  {@const floorBits = Math.max(SERVER_FLOOR_BITS, repo.min_query_bits ?? SERVER_FLOOR_BITS)}
+                  {@const hiNonNaked = Math.max(floorBits, Math.min(repo.advertised_bits ?? MAX_BITS, softCapBits(N)))}
+                  {@const hi = naked ? MAX_BITS : hiNonNaked}
+                  {@const displayBits = Math.min(Math.max(eff, floorBits), hi)}
+                  <div class="repo-crowd">
+                    <label>Cover crowd
+                      <input type="range" min={floorBits} max={hi}
+                        value={floorBits + hi - displayBits}
+                        onchange={(e) => saveBits(repo, floorBits + hi - +e.currentTarget.value)} />
+                    </label>
+                    <span class="crowd-readout">
+                      ≈ {crowdForBits(N, eff).toLocaleString()} cover files · ~{formatBytes(bytesPerLookup(N, eff))} per file looked up
+                      {#if currentBits(repo) > (repo.advertised_bits ?? currentBits(repo))}
+                        <span class="soon">(repo serves {repo.advertised_bits}-bit buckets — larger ceiling has no effect here)</span>
+                      {/if}
+                    </span>
+                    <label class="naked-opt">
+                      <input type="checkbox" checked={naked}
+                        onchange={(e) => {
+                          const on = e.currentTarget.checked;
+                          nakedByRepo[repo.name] = on;
+                          if (!on && currentBits(repo) > hiNonNaked) { saveBits(repo, hiNonNaked); }
+                        }} />
+                      allow naked pulls (crowd below {CROWD_FLOOR.toLocaleString()} — reveals near-exact hashes; VPN/trusted only)
+                    </label>
+                  </div>
                 {/if}
                 {#if confirmRemove === repo.name}
                   <span class="repo-confirm">
@@ -862,9 +938,6 @@
     flex-basis: 100%;
     margin-top: 2px;
   }
-  .repo-width-clamped {
-    color: var(--warn);
-  }
   .repo-confirm {
     display: inline-flex;
     gap: 8px;
@@ -898,5 +971,42 @@
     color: var(--text-mute);
     align-items: center;
     cursor: pointer;
+  }
+  .repo-crowd {
+    flex-basis: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 2px;
+  }
+  .repo-crowd label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font: 11px/1 var(--mono);
+    color: var(--text-faint);
+    cursor: pointer;
+  }
+  .repo-crowd input[type='range'] {
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .crowd-readout {
+    font: 11px/1.4 var(--mono);
+    color: var(--text-faint);
+  }
+  .naked-opt {
+    display: inline-flex;
+    gap: 6px;
+    font: 11px/1.4 var(--mono);
+    color: var(--text-mute);
+    align-items: flex-start;
+    cursor: pointer;
+  }
+  .naked-opt input[type='checkbox'] {
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-top: 1px;
   }
 </style>

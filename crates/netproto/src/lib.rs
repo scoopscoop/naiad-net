@@ -2249,6 +2249,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: None,
         };
         let json = serde_json::to_string(&caps).unwrap();
@@ -2275,6 +2276,7 @@ mod tests {
             streaming: false,
             min_query_bits: None,
             store_generation: None,
+            count: None,
             name: Some("NOS".into()),
         };
         // The field must appear in the serialised JSON and round-trip.

@@ -90,6 +90,13 @@ export interface RepoDto {
   /** Advertised repo minimum query width, from cached caps (#179). Some only once
    *  the repo has been handshaken and runs a snapshot backend. */
   min_query_bits?: number;
+  /** Advertised bucket width (prefix bits) from cached caps. Some once
+   *  handshaken in bucketed mode; None for WholeRepo or not-yet-handshaken. The
+   *  UI shows the EFFECTIVE width min(advertised_bits, max_query_bits). */
+  advertised_bits?: number;
+  /** Distinct-hash count from cached caps. Drives crowd↔bits conversion and
+   *  download estimate. None → bits-only control with no size estimate. */
+  count?: number;
 }
 
 /** Mirror of `naiad_api::FilePullRepoResult` — one repo's per-file pull outcome. */
