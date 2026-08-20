@@ -1382,7 +1382,7 @@ dependencies = [
 
 [[package]]
 name = "naiad-api"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "insta",
  "serde",
@@ -1391,11 +1391,11 @@ dependencies = [
 
 [[package]]
 name = "naiad-bootstrap"
-version = "0.3.3"
+version = "0.3.4"
 
 [[package]]
 name = "naiad-cli"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "anyhow",
  "clap",
@@ -1414,7 +1414,7 @@ dependencies = [
 
 [[package]]
 name = "naiad-core"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "blake3",
  "hex",
@@ -1426,7 +1426,7 @@ dependencies = [
 
 [[package]]
 name = "naiad-daemon"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "anyhow",
  "axum",
@@ -1467,7 +1467,7 @@ dependencies = [
 
 [[package]]
 name = "naiad-db"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "criterion",
  "naiad-core",
@@ -1481,7 +1481,7 @@ dependencies = [
 
 [[package]]
 name = "naiad-indexer"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "criterion",
  "imagesize",
@@ -1498,7 +1498,7 @@ dependencies = [
 
 [[package]]
 name = "naiad-netproto"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "anyhow",
  "blake3",
@@ -1517,7 +1517,7 @@ dependencies = [
 
 [[package]]
 name = "naiad-plugin"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "naiad-core",
  "thiserror",
@@ -1525,7 +1525,7 @@ dependencies = [
 
 [[package]]
 name = "naiad-plugin-hydrus"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "anyhow",
  "hex",
@@ -1538,7 +1538,7 @@ dependencies = [
 
 [[package]]
 name = "naiad-server"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "anyhow",
  "axum",
@@ -1575,7 +1575,7 @@ dependencies = [
 
 [[package]]
 name = "naiad-test-support"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "axum",
  "naiad-daemon",

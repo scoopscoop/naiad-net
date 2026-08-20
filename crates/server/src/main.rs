@@ -818,6 +818,19 @@ fn main() -> anyhow::Result<()> {
                 let bound = listener.local_addr()?;
                 tracing::info!("naiad-repo listening on http://{bound}");
 
+                // On a sidecar node the native store is empty; the real distinct-hash
+                // count lives in the sidecar db's sync_state cache (#236 parity).
+                // Compute the path the same way sidecar_path_for_stats does above
+                // (that value was consumed by spawn_stats) and Arc-wrap it for
+                // cheap clone inside caps_handler.
+                let sidecar_count_path = (bridge.enabled
+                    && bridge.mode == naiad_server::settings::BridgeMode::Sidecar)
+                    .then(|| {
+                        std::sync::Arc::new(naiad_server::settings::resolve_beside_db(
+                            &db_serve,
+                            &bridge.state_db,
+                        ))
+                    });
                 serve_with_shutdown_domains(
                     store,
                     read_stores,
@@ -828,6 +841,7 @@ fn main() -> anyhow::Result<()> {
                     domains,
                     is_read_only,
                     stats_layer,
+                    sidecar_count_path,
                     async move {
                         // On Err the signal-watcher task was dropped unexpectedly;
                         // keep the server running rather than triggering a spurious

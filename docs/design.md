@@ -550,7 +550,7 @@ Rationale for these is recorded in Architecture Decision Records maintained in t
 
 ## 12. Status & Contributing
 
-**Pre-alpha — v0.3.3.** This document is the design spec (the *why*); Phases 0–2 are complete and
+**Pre-alpha — v0.3.4.** This document is the design spec (the *why*); Phases 0–2 are complete and
 Phases 3–5 are in progress — see the [Roadmap](#9-roadmap) for delivered vs remaining. Networking is
 implemented: signed submissions, accounts, k-anonymous bucket pulls, search/display, and delta
 sync all ship today; in v0.2.0 the federation model was replaced with a simple client/server

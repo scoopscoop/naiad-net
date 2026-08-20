@@ -190,6 +190,10 @@ struct RepoState {
     /// Serve-only mode (#202): when `true`, write endpoints return 403 and
     /// pooled read connections have `PRAGMA query_only = ON`. Reads are unaffected.
     read_only: bool,
+    /// Path to the bridge sidecar db, Some only in BridgeMode::Sidecar. When set,
+    /// `caps_handler` advertises the sidecar's cached distinct-hash count instead
+    /// of the (empty) native count, so clients see the real repo size (#236 parity).
+    sidecar_count_path: Option<Arc<std::path::PathBuf>>,
 }
 
 impl RepoState {
@@ -316,6 +320,7 @@ pub fn app_domains_budget(
         bucket_budget,
         read_only,
         None,
+        None,
     )
 }
 
@@ -337,6 +342,7 @@ pub(crate) fn app_domains_with_pool(
     domains: DomainConfig,
     read_only: bool,
     stats_layer: Option<crate::stats::middleware::StatsLayer>,
+    sidecar_count_path: Option<Arc<std::path::PathBuf>>,
 ) -> Router {
     build_app(
         store,
@@ -348,6 +354,7 @@ pub(crate) fn app_domains_with_pool(
         RESPONSE_SIZE_CAP,
         read_only,
         stats_layer,
+        sidecar_count_path,
     )
 }
 
@@ -365,6 +372,7 @@ fn build_app(
     bucket_budget: usize,
     read_only: bool,
     stats_layer: Option<crate::stats::middleware::StatsLayer>,
+    sidecar_count_path: Option<Arc<std::path::PathBuf>>,
 ) -> Router {
     let ref_bits = domains
         .added_sha256
@@ -380,6 +388,7 @@ fn build_app(
         bucket_budget,
         serve_stats: Arc::new(ServeStats::new(ref_bits)),
         read_only,
+        sidecar_count_path,
     };
     // Submissions and reports are small JSON; cap at 64 KB to avoid surprising
     // memory growth from oversized payloads (default axum limit is 2 MB).
@@ -697,6 +706,31 @@ async fn caps_handler(
     };
     // Internal use only: advise() and the snapshot-floor lift need a u64.
     let count = count_opt.unwrap_or(CAPS_FALLBACK_COUNT);
+    // Sidecar nodes have an empty native store; source the advertised count from
+    // the sidecar's cached distinct-hash count when available (#236 parity).
+    let wire_count = if let Some(sc_path) = st.sidecar_count_path.clone() {
+        let native = count_opt;
+        tokio::task::spawn_blocking(move || {
+            match crate::bridge::sidecar::Sidecar::open_readonly(sc_path.as_ref().as_path()) {
+                Ok(sc) => match sc.cached_bridge_counts() {
+                    Ok(Some((hashes, _, _))) => Some(hashes),
+                    Ok(None) => native,
+                    Err(e) => {
+                        tracing::warn!(target: "repo", err = %e, "caps: sidecar cached_bridge_counts failed; using native count");
+                        native
+                    }
+                },
+                Err(e) => {
+                    tracing::warn!(target: "repo", err = %e, "caps: sidecar open_readonly failed; using native count");
+                    native
+                }
+            }
+        })
+        .await
+        .unwrap_or(count_opt)
+    } else {
+        count_opt
+    };
     let caps = Caps {
         version: PROTOCOL_VERSION,
         mode: match snapshot_bits {
@@ -759,7 +793,9 @@ async fn caps_handler(
         // repo size. Advisory only — never a contract. None when no real
         // count row exists yet (avoids overstating crowd during pre-compute
         // window); the internal advise() still uses the fallback u64.
-        count: count_opt,
+        // On sidecar nodes this is sourced from the sidecar's cached count
+        // rather than the empty native store (#236 parity).
+        count: wire_count,
         // #194: absent (None) when the store has never been seeded or
         // predates this feature; clients fall back to the
         // backwards-cursor guard in that case.
@@ -4762,6 +4798,7 @@ mod tests {
                 crate::domain::DomainConfig::native_only(HashDomain::Blake3),
                 false, // read_only = false
                 None,  // stats_layer
+                None,  // sidecar_count_path
             );
 
             // POST /repo/submit with a valid signed submission → 204 No Content.
@@ -4808,6 +4845,7 @@ mod tests {
             crate::domain::DomainConfig::native_only(HashDomain::Blake3),
             true, // read_only
             None, // stats_layer
+            None, // sidecar_count_path
         );
 
         // GET /repo/caps must succeed (200) — reads are unaffected.
@@ -4888,6 +4926,120 @@ mod tests {
             rel_resp.status(),
             StatusCode::FORBIDDEN,
             "relations/submit must be refused in read_only mode even with a valid signed payload"
+        );
+    }
+
+    /// When `sidecar_count_path` is set and the sidecar cache is populated,
+    /// `GET /repo/caps` must advertise the sidecar's cached hash count rather
+    /// than the empty native store's count (#236 parity).
+    #[tokio::test]
+    async fn caps_sidecar_count_path_advertises_sidecar_hash_count() {
+        use axum::body::to_bytes;
+        use axum::http::Request;
+        use tower::ServiceExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let sc_path = dir.path().join("sidecar.db");
+
+        // Build a sidecar with two hashes and a populated count cache.
+        {
+            let s = crate::bridge::sidecar::Sidecar::create(&sc_path).unwrap();
+            s.write_tag_set(&[0x01u8; 32], &[10, 20]).unwrap();
+            s.write_tag_set(&[0x02u8; 32], &[30]).unwrap();
+            let tx = s.conn().unchecked_transaction().unwrap();
+            s.insert_defs_tags(&[
+                (10, "character:samus".into()),
+                (20, "series:metroid".into()),
+                (30, "rating:safe".into()),
+            ])
+            .unwrap();
+            tx.commit().unwrap();
+            s.recompute_bridge_counts().unwrap();
+            // The cache now holds hashes=2, tags=3, mappings=3.
+        }
+
+        let store = Arc::new(Mutex::new(RepoStore::open_in_memory().unwrap()));
+        let pool = Arc::new(ReadPool::new(vec![Arc::clone(&store)]));
+        let sidecar_count_path = Some(Arc::new(sc_path));
+        let router = app_domains_with_pool(
+            store,
+            pool,
+            1000,
+            None,
+            None,
+            crate::domain::DomainConfig::native_only(HashDomain::Blake3),
+            false,
+            None,
+            sidecar_count_path,
+        );
+
+        let resp = router
+            .oneshot(
+                Request::builder()
+                    .uri(REPO_CAPS)
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status().as_u16(), 200, "caps must return 200");
+        let body = to_bytes(resp.into_body(), 1024 * 16).await.unwrap();
+        let caps: naiad_netproto::Caps = serde_json::from_slice(&body).unwrap();
+        // The sidecar cache holds 2 hashes; caps must advertise Some(2).
+        assert_eq!(
+            caps.count,
+            Some(2),
+            "caps must advertise the sidecar cached hash count (2), got {:?}",
+            caps.count
+        );
+    }
+
+    /// When `sidecar_count_path` is set but the sidecar cache has NOT been
+    /// populated yet (refresher not yet run), caps must fall back to the native
+    /// store's count (None for an empty in-memory store).
+    #[tokio::test]
+    async fn caps_sidecar_count_path_unpopulated_cache_falls_back_to_native() {
+        use axum::body::to_bytes;
+        use axum::http::Request;
+        use tower::ServiceExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let sc_path = dir.path().join("sidecar_fresh.db");
+        // Fresh sidecar with no recompute — cache is absent.
+        crate::bridge::sidecar::Sidecar::create(&sc_path).unwrap();
+
+        let store = Arc::new(Mutex::new(RepoStore::open_in_memory().unwrap()));
+        let pool = Arc::new(ReadPool::new(vec![Arc::clone(&store)]));
+        let sidecar_count_path = Some(Arc::new(sc_path));
+        let router = app_domains_with_pool(
+            store,
+            pool,
+            1000,
+            None,
+            None,
+            crate::domain::DomainConfig::native_only(HashDomain::Blake3),
+            false,
+            None,
+            sidecar_count_path,
+        );
+
+        let resp = router
+            .oneshot(
+                Request::builder()
+                    .uri(REPO_CAPS)
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status().as_u16(), 200, "caps must return 200");
+        let body = to_bytes(resp.into_body(), 1024 * 16).await.unwrap();
+        let caps: naiad_netproto::Caps = serde_json::from_slice(&body).unwrap();
+        // No cache + empty native store → None.
+        assert_eq!(
+            caps.count, None,
+            "unpopulated sidecar cache with empty native store must yield count: None, got {:?}",
+            caps.count
         );
     }
 }

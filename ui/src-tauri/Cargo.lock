@@ -1818,11 +1818,11 @@ dependencies = [
 
 [[package]]
 name = "naiad-bootstrap"
-version = "0.3.3"
+version = "0.3.4"
 
 [[package]]
 name = "naiad-desktop"
-version = "0.3.3"
+version = "0.3.4"
 dependencies = [
  "log",
  "naiad-bootstrap",

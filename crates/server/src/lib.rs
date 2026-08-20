@@ -118,6 +118,7 @@ pub async fn serve_with_shutdown_domains(
     domains: DomainConfig,
     read_only: bool,
     stats_layer: Option<StatsLayer>,
+    sidecar_count_path: Option<Arc<std::path::PathBuf>>,
     shutdown: impl Future<Output = ()> + Send + 'static,
     drain_cap: Duration,
 ) -> anyhow::Result<()> {
@@ -189,7 +190,7 @@ pub async fn serve_with_shutdown_domains(
         result = async {
             axum::serve(
                 listener,
-                http::app_domains_with_pool(shared, read_pool, k, repo_key, name, domains, read_only, stats_layer)
+                http::app_domains_with_pool(shared, read_pool, k, repo_key, name, domains, read_only, stats_layer, sidecar_count_path)
                     .into_make_service_with_connect_info::<SocketAddr>(),
             )
             .with_graceful_shutdown(graceful_fut)
@@ -254,6 +255,7 @@ pub async fn serve_with_shutdown(
         name,
         DomainConfig::native_only(hash_domain),
         false,
+        None,
         None,
         shutdown,
         drain_cap,
