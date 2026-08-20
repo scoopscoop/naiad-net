@@ -1846,7 +1846,10 @@ mod tests {
         assert_eq!(caps.count, None);
         let out = serde_json::to_string(&caps).unwrap();
         assert!(!out.contains("count"), "None count must be skipped: {out}");
-        let with = Caps { count: Some(94_317), ..caps };
+        let with = Caps {
+            count: Some(94_317),
+            ..caps
+        };
         let s = serde_json::to_string(&with).unwrap();
         assert!(s.contains("\"count\":94317"), "serialized: {s}");
         let back: Caps = serde_json::from_str(&s).unwrap();

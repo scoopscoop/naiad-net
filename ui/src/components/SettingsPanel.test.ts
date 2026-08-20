@@ -447,9 +447,9 @@ describe('SettingsPanel', () => {
   });
 });
 
-describe('SettingsPanel repo width line (#179 §8.4)', () => {
+describe('SettingsPanel repo cover-crowd control', () => {
   /** Navigate to Sync tab with a mocked single-repo response, return when rendered. */
-  async function renderWithRepo(repoObj: { name: string; url: string; max_query_bits?: number; min_query_bits?: number }) {
+  async function renderWithRepo(repoObj: { name: string; url: string; max_query_bits?: number; min_query_bits?: number; advertised_bits?: number; count?: number }) {
     vi.mocked(api.listRoots).mockResolvedValue([]);
     vi.mocked(api.listRepos).mockResolvedValue([repoObj]);
     vi.mocked(api.hydrusConfigure).mockResolvedValue();
@@ -478,25 +478,22 @@ describe('SettingsPanel repo width line (#179 §8.4)', () => {
     view.zoomLevel = 8;
   });
 
-  it('ceiling-only: renders "query width ≤ N bits" when min_query_bits is absent', async () => {
+  it('not-yet-handshaken: shows the no-bucketing note when advertised_bits is absent', async () => {
     await renderWithRepo({ name: 'ptr', url: 'http://x', max_query_bits: 24 });
-    expect(screen.getByText(/query width ≤ 24 bits/)).toBeInTheDocument();
+    expect(screen.getByText(/no bucketing yet/)).toBeInTheDocument();
   });
 
-  it('both-bounds-with-headroom: renders "query width N bits (repo min M)" when min ≤ max', async () => {
-    await renderWithRepo({ name: 'ptr', url: 'http://x', max_query_bits: 24, min_query_bits: 16 });
-    expect(screen.getByText(/query width 24 bits \(repo min 16\)/)).toBeInTheDocument();
-    // Must NOT carry the warning class in this (healthy) case.
-    const span = screen.getByText(/query width 24 bits \(repo min 16\)/).closest('span');
-    expect(span?.classList.contains('repo-width-clamped')).toBe(false);
+  it('bucketed repo with a known size: shows the Cover crowd control, a crowd readout, and the naked opt-in', async () => {
+    await renderWithRepo({ name: 'ptr', url: 'http://x', max_query_bits: 24, advertised_bits: 18, count: 1_000_000_000 });
+    expect(screen.getByText(/Cover crowd/)).toBeInTheDocument();
+    expect(screen.getByText(/cover files/)).toBeInTheDocument();
+    expect(screen.getByText(/allow naked pulls/)).toBeInTheDocument();
   });
 
-  it('clamp-up: renders warning form and .repo-width-clamped class when min > max', async () => {
-    await renderWithRepo({ name: 'ptr', url: 'http://x', max_query_bits: 12, min_query_bits: 16 });
-    expect(screen.getByText(/query width 12 → 16 bits \(raised to repo minimum\)/)).toBeInTheDocument();
-    const span = screen.getByText(/query width 12 → 16 bits \(raised to repo minimum\)/).closest('span');
-    // The --warn token branch must be active via the clamped class.
-    expect(span?.classList.contains('repo-width-clamped')).toBe(true);
+  it('bucketed repo that did not report its size: falls back to the bits-only control with the naked opt-in', async () => {
+    await renderWithRepo({ name: 'ptr', url: 'http://x', max_query_bits: 24, advertised_bits: 18 });
+    expect(screen.getByText(/query width ≤/)).toBeInTheDocument();
+    expect(screen.getByText(/allow naked pulls/)).toBeInTheDocument();
   });
 });
 
